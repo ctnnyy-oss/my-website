@@ -1112,7 +1112,7 @@ export default function Backtest({ onBack }) {
 
   // 🌸 返回 { topCards, leftCards } 方便分开渲染
   const renderMetricCards = (res, ddWins, isGhost = false, modeOverride) => {
-    if (!res) return { sideCards: null };
+    if (!res) return { topCards: null, bottomCards: null };
     const activeViewMode = modeOverride ?? viewMode;
 
     const metrics = [
@@ -1180,17 +1180,19 @@ export default function Backtest({ onBack }) {
     };
 
     // 顶部5张，左侧4张
-    const sideCards = metrics.map((m, i) => makeCard(m, i));
+    const topCards = metrics.slice(0, 3).map((m, i) => makeCard(m, i));
+    const bottomCards = metrics.slice(3).map((m, i) => makeCard(m, i + 3));
 
-    return { sideCards };
+    return { topCards, bottomCards };
   };
 
-  const renderChartLayer = (chartData, chartState, ddWins) => {
+  const renderChartLayer = (chartData, chartState, ddWins, kind = 'value') => {
     if (!chartData?.length) return null;
     const chartCurveType = (metricMode === 'value' || scaleMode === 'log') ? 'linear' : 'monotone';
     const ddDomain = getDdDomain(chartData, chartState.showSub ? 'compare' : 'A');
-    const mainDdWindowLocal = ddWins?.A;
-    const subDdWindowLocal = ddWins?.B;
+    const seriesMap = getSeriesForMode(viewMode);
+    const mainDdWindowLocal = ddWins?.[seriesMap.main];
+    const subDdWindowLocal = ddWins?.[seriesMap.sub];
     const mainOpacity = 1;
     const subOpacity = chartState.subOpacity ?? 0;
     const getDisplayValueDomain = () => {
@@ -1210,7 +1212,7 @@ export default function Backtest({ onBack }) {
 
     return (
       <div className="absolute inset-0" style={{ '--main-color': chartState.mainColor, '--sub-color': chartState.subColor }}>
-        {chartTab === 'value' ? (
+        {kind === 'value' ? (
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData}>
               <defs>
@@ -1581,7 +1583,7 @@ export default function Backtest({ onBack }) {
                 <div className={`${uiSwitching ? "soft-fade " : ""}flex-1 min-h-0 min-w-0 flex flex-col gap-2`}>
                   {/* 🌸 紧凑环绕布局：顶部5卡 + (左侧4卡 + 图表) */}
                   {(() => {
-                    const { sideCards } = renderMetricCards(results, ddWindows, false, viewMode);
+                    const { topCards, bottomCards } = renderMetricCards(results, ddWindows, false, viewMode);
                     const ghost = ghostResults ? renderMetricCards(ghostResults, ddWindowsGhost, true, ghostResults.meta?.viewMode) : null;
 
                     return (
@@ -1590,55 +1592,70 @@ export default function Backtest({ onBack }) {
                         {/* 下方区域：左侧4卡 + 图表 */}
                         <div className="flex-1 min-h-0 flex gap-2">
                           {/* 左侧一列：4张卡片垂直排列，均分高度 */}
-                          <div className="w-[130px] shrink-0 h-full relative">
-                            {ghost?.sideCards && (
-                              <div className="absolute inset-0 flex flex-col gap-1.5 h-full pointer-events-none ghost-out">
-                                {ghost.sideCards}
+                          <div className="w-[132px] shrink-0 h-full relative flex flex-col gap-2">
+                            <div className="relative flex-[1] min-h-0">
+                              {ghost?.topCards && (
+                                <div className="absolute inset-0 flex flex-col gap-1.5 h-full pointer-events-none ghost-out">
+                                  {ghost.topCards}
+                                </div>
+                              )}
+                              <div className={`relative flex flex-col gap-1.5 h-full ${uiSwitching ? 'ghost-in' : ''}`}>
+                                {topCards}
                               </div>
-                            )}
-                            <div className={`relative flex flex-col gap-1.5 h-full ${uiSwitching ? 'ghost-in' : ''}`}>
-                              {sideCards}
+                            </div>
+                            <div className="relative flex-[2] min-h-0">
+                              {ghost?.bottomCards && (
+                                <div className="absolute inset-0 flex flex-col gap-1.5 h-full pointer-events-none ghost-out">
+                                  {ghost.bottomCards}
+                                </div>
+                              )}
+                              <div className={`relative flex flex-col gap-1.5 h-full ${uiSwitching ? 'ghost-in' : ''}`}>
+                                {bottomCards}
+                              </div>
                             </div>
                           </div>
 
                           {/* 图表区域：充满剩余空间 */}
-                          <div {...cardFXProps} className={`${glassCard} flex-1 p-3 flex flex-col gap-2 min-h-0 min-w-0 !overflow-visible`}>
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="flex gap-2 bg-white/60 p-1 rounded-2xl border border-white/70">
-                                {[
-                                  { id: 'value', label: metricMode === 'value' ? '资产曲线' : '收益曲线' },
-                                  { id: 'drawdown', label: '回撤曲线' },
-                                ].map(tab => (
-                                  <button
-                                    key={tab.id}
-                                    onClick={() => setChartTab(tab.id)}
-                                    className={`ripple-button px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-300 ${chartTab === tab.id ? 'bg-white text-[#7A3B4A] shadow-sm' : 'text-[#B58A97] hover:bg-white/50'}`}
-                                  >
-                                    {tab.label}
-                                  </button>
-                                ))}
-                              </div>
-                              {chartTab === 'value' && (
-                                <div className="flex items-center gap-2 text-[11px] font-bold text-[#B58A97]">
-                                  <span className="px-2 py-1 rounded-full bg-white/60 border border-white/70">{scaleMode === 'log' ? '对数坐标' : '线性坐标'}</span>
-                                  {metricMode === 'value' && (
-                                    <span className="px-2 py-1 rounded-full bg-white/60 border border-white/70 text-[#7A3B4A]">含成本线</span>
-                                  )}
+                          <div className="flex-1 min-h-0 min-w-0 flex flex-col gap-3">
+                            <div {...cardFXProps} className={`${glassCard} flex-[1] p-3 flex flex-col gap-2 min-h-0 min-w-0 !overflow-visible`}>
+                              {!hasChartData ? (
+                                <div className="flex-1 min-h-[160px] rounded-2xl bg-white/50 border border-white/60 flex items-center justify-center text-sm font-semibold text-[#9A7381]">
+                                  暂无图表数据，请先运行回测
                                 </div>
+                              ) : (
+                                <>
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="px-2 py-1 rounded-full bg-white/60 border border-white/70 text-[11px] font-bold text-[#7A3B4A]">回撤曲线</span>
+                                  </div>
+                                  <div className="relative flex-1 min-h-0">
+                                    {renderChartLayer(chartDataForRender, chartTween, ddWindows, 'drawdown')}
+                                  </div>
+                                </>
                               )}
                             </div>
-
-                            {/* Chart wrapper: square, fills available space */}
-                            <div className="flex-1 min-h-0 min-w-0 flex items-center justify-center">
-                              <div className="relative w-full h-full" style={{ maxWidth: 'min(100%, 100%)', aspectRatio: '1 / 1' }}>
-                                {!hasChartData ? (
-                                  <div className="h-full w-full rounded-2xl bg-white/50 border border-white/60 flex items-center justify-center text-sm font-semibold text-[#9A7381]">
-                                    暂无图表数据，请先运行回测 ✨
+                            <div {...cardFXProps} className={`${glassCard} flex-[2] p-3 flex flex-col gap-2 min-h-0 min-w-0 !overflow-visible`}>
+                              {!hasChartData ? (
+                                <div className="flex-1 min-h-[220px] rounded-2xl bg-white/50 border border-white/60 flex items-center justify-center text-sm font-semibold text-[#9A7381]">
+                                  暂无图表数据，请先运行回测
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="px-2 py-1 rounded-full bg-white/60 border border-white/70 text-[11px] font-bold text-[#7A3B4A]">
+                                      {metricMode === 'value' ? '资产曲线' : '收益曲线'}
+                                    </span>
+                                    <div className="flex items-center gap-2 text-[11px] font-bold text-[#B58A97]">
+                                      <span className="px-2 py-1 rounded-full bg-white/60 border border-white/70">{scaleMode === 'log' ? '对数坐标' : '线性坐标'}</span>
+                                      {metricMode === 'value' && (
+                                        <span className="px-2 py-1 rounded-full bg-white/60 border border-white/70 text-[#7A3B4A]">含成本线</span>
+                                      )}
+                                    </div>
                                   </div>
-                                ) : (
-                                  renderChartLayer(chartDataForRender, chartTween, ddWindows)
-                                )}
-                              </div>
+                                  <div className="relative flex-1 min-h-0">
+                                    {renderChartLayer(chartDataForRender, chartTween, ddWindows, 'value')}
+                                  </div>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
