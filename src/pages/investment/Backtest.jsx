@@ -215,6 +215,144 @@ const useTweenNumber = (target, duration = 680) => {
   return val;
 };
 
+const lerpNumber = (a, b, t) => {
+  const aa = Number(a);
+  const bb = Number(b);
+  if (!Number.isFinite(aa) && !Number.isFinite(bb)) return null;
+  if (!Number.isFinite(aa)) return bb;
+  if (!Number.isFinite(bb)) return aa;
+  return aa + (bb - aa) * t;
+};
+
+const hexToRgb = (hex) => {
+  if (!hex) return null;
+  const clean = hex.replace('#', '').trim();
+  if (clean.length === 3) {
+    const r = parseInt(clean[0] + clean[0], 16);
+    const g = parseInt(clean[1] + clean[1], 16);
+    const b = parseInt(clean[2] + clean[2], 16);
+    return { r, g, b };
+  }
+  if (clean.length !== 6) return null;
+  const r = parseInt(clean.slice(0, 2), 16);
+  const g = parseInt(clean.slice(2, 4), 16);
+  const b = parseInt(clean.slice(4, 6), 16);
+  return { r, g, b };
+};
+
+const mixColor = (from, to, t) => {
+  const a = hexToRgb(from);
+  const b = hexToRgb(to);
+  if (!a || !b) return to || from || '#000000';
+  const r = Math.round(lerpNumber(a.r, b.r, t));
+  const g = Math.round(lerpNumber(a.g, b.g, t));
+  const b2 = Math.round(lerpNumber(a.b, b.b, t));
+  return `rgb(${r}, ${g}, ${b2})`;
+};
+
+const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+const safePct = (a, b) => {
+  if (a == null || b == null) return 0;
+  const aa = Number(a), bb = Number(b);
+  if (!Number.isFinite(aa) || !Number.isFinite(bb) || bb <= 0) return 0;
+  return ((aa - bb) / bb) * 100;
+};
+
+const getSeriesForMode = (mode) => {
+  if (mode === 'B') return { main: 'B', sub: 'A', showSub: false };
+  if (mode === 'A') return { main: 'A', sub: 'B', showSub: false };
+  return { main: 'A', sub: 'B', showSub: true };
+};
+
+const pickSeriesValues = (row, series) => {
+  if (!row) return { vPlot: null, vRaw: null, cPlot: null, cRaw: null, dd: null };
+  if (series === 'A') {
+    return {
+      vPlot: row.vMainPlot,
+      vRaw: row.vMainRaw,
+      cPlot: row.cMainPlot,
+      cRaw: row.cMainRaw,
+      dd: row.ddMain,
+    };
+  }
+  return {
+    vPlot: row.vSubPlot,
+    vRaw: row.vSubRaw,
+    cPlot: row.cSubPlot,
+    cRaw: row.cSubRaw,
+    dd: row.ddSub,
+  };
+};
+
+const lerpSeriesValues = (from, to, t) => ({
+  vPlot: lerpNumber(from?.vPlot, to?.vPlot, t),
+  vRaw: lerpNumber(from?.vRaw, to?.vRaw, t),
+  cPlot: lerpNumber(from?.cPlot, to?.cPlot, t),
+  cRaw: lerpNumber(from?.cRaw, to?.cRaw, t),
+  dd: lerpNumber(from?.dd, to?.dd, t),
+});
+
+const buildTweenData = (fromData, toData, t, fromSeries, toSeries) => {
+  if (!fromData?.length && !toData?.length) return [];
+  const mapFrom = new Map((fromData || []).map(r => [r.date, r]));
+  const mapTo = new Map((toData || []).map(r => [r.date, r]));
+  const dates = Array.from(new Set([...mapFrom.keys(), ...mapTo.keys()]))
+    .sort((a, b) => dateToTime(a) - dateToTime(b));
+
+  let lastFrom = null;
+  let lastTo = null;
+  const out = [];
+
+  dates.forEach(date => {
+    if (mapFrom.has(date)) lastFrom = mapFrom.get(date);
+    if (mapTo.has(date)) lastTo = mapTo.get(date);
+    if (!lastFrom && !lastTo) return;
+
+    const fromRow = lastFrom || lastTo;
+    const toRow = lastTo || lastFrom;
+
+    const fromMain = pickSeriesValues(fromRow, fromSeries.main);
+    const toMain = pickSeriesValues(toRow, toSeries.main);
+    let fromSub = pickSeriesValues(fromRow, fromSeries.sub);
+    let toSub = pickSeriesValues(toRow, toSeries.sub);
+
+    if (!fromSeries.showSub && toSeries.showSub) {
+      fromSub = { ...fromMain };
+    }
+    if (fromSeries.showSub && !toSeries.showSub) {
+      toSub = { ...toMain };
+    }
+
+    const main = lerpSeriesValues(fromMain, toMain, t);
+    const sub = lerpSeriesValues(fromSub, toSub, t);
+
+    out.push({
+      date,
+      vMainPlot: main.vPlot,
+      vSubPlot: sub.vPlot,
+      cMainPlot: main.cPlot,
+      cSubPlot: sub.cPlot,
+      vMainRaw: main.vRaw,
+      vSubRaw: sub.vRaw,
+      cMainRaw: main.cRaw,
+      cSubRaw: sub.cRaw,
+      ddMain: main.dd,
+      ddSub: sub.dd,
+    });
+  });
+
+  for (let i = 0; i < out.length; i++) {
+    const cur = out[i];
+    const prev = out[i - 1];
+    cur.idx = i;
+    cur.chgMain = i === 0 ? 0 : safePct(cur.vMainRaw, prev?.vMainRaw);
+    cur.chgSub = i === 0 ? 0 : safePct(cur.vSubRaw, prev?.vSubRaw);
+  }
+
+  return out;
+};
+
 const AnimatedValue = ({ value, formatter, duration = 680, className = "" }) => {
   const isNum = Number.isFinite(Number(value));
   const v = useTweenNumber(value, duration);
@@ -264,6 +402,9 @@ export default function Backtest({ onBack }) {
   const [chartTab, setChartTab] = useState('value'); // value | drawdown
   const [showSheet, setShowSheet] = useState(false); // mobile bottom sheet for holdings
   const toastTimerRef = useRef(null);
+  const chartTweenRef = useRef({ from: null, to: null, metaFrom: null, metaTo: null, raf: null });
+  const [chartTweenT, setChartTweenT] = useState(1);
+  const [chartTweenKey, setChartTweenKey] = useState(0);
 
   const showToast = (msg) => {
     setToast(msg);
@@ -280,6 +421,7 @@ export default function Backtest({ onBack }) {
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
       if (switchTimerRef.current.t1) clearTimeout(switchTimerRef.current.t1);
       if (switchTimerRef.current.t2) clearTimeout(switchTimerRef.current.t2);
+      if (chartTweenRef.current.raf) cancelAnimationFrame(chartTweenRef.current.raf);
     };
   }, []);
 
@@ -614,10 +756,7 @@ export default function Backtest({ onBack }) {
     if (resA) resA.curve.forEach(d => mapA.set(d.date, d));
     if (resB) resB.curve.forEach(d => mapB.set(d.date, d));
 
-    let dates = [];
-    if (viewMode === 'compare') dates = Array.from(new Set([...mapA.keys(), ...mapB.keys()]));
-    else if (viewMode === 'A') dates = Array.from(mapA.keys());
-    else dates = Array.from(mapB.keys());
+    let dates = Array.from(new Set([...mapA.keys(), ...mapB.keys()]));
     dates.sort((a, b) => dateToTime(a) - dateToTime(b));
 
     let lastA = null, lastB = null;
@@ -627,24 +766,14 @@ export default function Backtest({ onBack }) {
     dates.forEach(date => {
       if (mapA.has(date)) lastA = mapA.get(date);
       if (mapB.has(date)) lastB = mapB.get(date);
-      if (viewMode === 'compare' && (!lastA || !lastB)) return;
+      if (!lastA && !lastB) return;
 
       const a = lastA, b = lastB;
 
-      let vMain, vSub, ddMain, ddSub, cMain, cSub;
-
-      if (viewMode === 'compare') {
-        vMain = metricMode === 'value' ? a?.value : a?.returnRate;
-        vSub = metricMode === 'value' ? b?.value : b?.returnRate;
-        cMain = a?.cost; cSub = b?.cost;
-        ddMain = a?.drawdown; ddSub = b?.drawdown;
-      } else if (viewMode === 'A') {
-        vMain = metricMode === 'value' ? a?.value : a?.returnRate;
-        cMain = a?.cost; ddMain = a?.drawdown;
-      } else {
-        vMain = metricMode === 'value' ? b?.value : b?.returnRate;
-        cMain = b?.cost; ddMain = b?.drawdown;
-      }
+      const vMain = metricMode === 'value' ? a?.value : a?.returnRate;
+      const vSub = metricMode === 'value' ? b?.value : b?.returnRate;
+      const cMain = a?.cost; const cSub = b?.cost;
+      const ddMain = a?.drawdown; const ddSub = b?.drawdown;
 
       const vMainRaw = toFiniteOrNull(vMain);
       const vSubRaw = toFiniteOrNull(vSub);
@@ -697,16 +826,13 @@ export default function Backtest({ onBack }) {
         });
       });
       if (vals.length > 0) {
-        let min = Math.min(...vals), max = Math.max(...vals);
-        const span = max - min;
-        let pad = span > 0 ? span * 0.015 : 1;
-        pad = Math.max(pad, 1);
-        yDomainLinearValue = [Math.max(0, min - pad), max + pad];
+        const min = Math.min(...vals), max = Math.max(...vals);
+        yDomainLinearValue = [Math.max(0, min), max];
       }
     }
 
-    return { dataA: resA, dataB: resB, chartData, yDomainLinearValue };
-  }, [rawDataMap, params, fundsA, fundsB, strategyMode, viewMode, metricMode, scaleMode, rangeMode]);
+    return { dataA: resA, dataB: resB, chartData, yDomainLinearValue, meta: { viewMode, metricMode, scaleMode, chartTab } };
+  }, [rawDataMap, params, fundsA, fundsB, strategyMode, viewMode, metricMode, scaleMode, rangeMode, chartTab]);
 
   // ✅ 更丝滑：不再“先清空再出现”，而是：新结果立刻上屏 + 旧结果做残影淡出
   useEffect(() => {
@@ -732,8 +858,8 @@ export default function Backtest({ onBack }) {
     if (switchTimerRef.current.t1) clearTimeout(switchTimerRef.current.t1);
     if (switchTimerRef.current.t2) clearTimeout(switchTimerRef.current.t2);
 
-    switchTimerRef.current.t1 = setTimeout(() => { setGhostResults(null); }, 260);
-    switchTimerRef.current.t2 = setTimeout(() => { setUiSwitching(false); }, 320);
+    switchTimerRef.current.t1 = setTimeout(() => { setGhostResults(null); }, 520);
+    switchTimerRef.current.t2 = setTimeout(() => { setUiSwitching(false); }, 600);
 
     return () => {
       if (switchTimerRef.current.t1) clearTimeout(switchTimerRef.current.t1);
@@ -741,9 +867,53 @@ export default function Backtest({ onBack }) {
     };
   }, [computedResults]);
 
+  useEffect(() => {
+    if (!computedResults) {
+      if (chartTweenRef.current.raf) cancelAnimationFrame(chartTweenRef.current.raf);
+      chartTweenRef.current.from = null;
+      chartTweenRef.current.to = null;
+      chartTweenRef.current.metaFrom = null;
+      chartTweenRef.current.metaTo = null;
+      setChartTweenT(1);
+      return;
+    }
+
+    const prev = displayResultsRef.current;
+    const fromData = prev?.chartData || computedResults.chartData;
+    const fromMeta = prev?.meta || computedResults.meta;
+
+    chartTweenRef.current.from = fromData;
+    chartTweenRef.current.to = computedResults.chartData;
+    chartTweenRef.current.metaFrom = fromMeta;
+    chartTweenRef.current.metaTo = computedResults.meta;
+    setChartTweenKey((k) => k + 1);
+
+    if (!prev) {
+      setChartTweenT(1);
+      return;
+    }
+
+    if (chartTweenRef.current.raf) cancelAnimationFrame(chartTweenRef.current.raf);
+
+    const duration = 680;
+    const start = performance.now();
+    const tick = (now) => {
+      const p = Math.min(1, (now - start) / duration);
+      setChartTweenT(easeInOutCubic(p));
+      if (p < 1) {
+        chartTweenRef.current.raf = requestAnimationFrame(tick);
+      }
+    };
+
+    setChartTweenT(0);
+    chartTweenRef.current.raf = requestAnimationFrame(tick);
+
+    return () => {
+      if (chartTweenRef.current.raf) cancelAnimationFrame(chartTweenRef.current.raf);
+    };
+  }, [computedResults]);
+
   const results = displayResults;
-  const hasChartData = !!results?.chartData?.length;
-  const chartKey = `${chartTab}-${scaleMode}-${viewMode}-${metricMode}`;
 
   const ddWindows = useMemo(() => {
     if (!results) return null;
@@ -761,22 +931,12 @@ export default function Backtest({ onBack }) {
     };
   }, [ghostResults]);
 
-  const mainDdWindow = useMemo(() => {
-    if (!ddWindows) return null;
-    return viewMode === 'B' ? ddWindows.B : ddWindows.A;
-  }, [ddWindows, viewMode]);
-
-  const subDdWindow = useMemo(() => {
-    if (!ddWindows) return null;
-    return viewMode === 'compare' ? ddWindows.B : null;
-  }, [ddWindows, viewMode]);
-
-  const ddDomain = useMemo(() => {
-    if (!results?.chartData?.length) return [-1, 0];
+  const getDdDomain = (chartData, mode) => {
+    if (!chartData?.length) return [-1, 0];
     const vals = [];
-    results.chartData.forEach(r => {
-      if (typeof r.ddMain === 'number') vals.push(r.ddMain);
-      if (viewMode === 'compare' && typeof r.ddSub === 'number') vals.push(r.ddSub);
+    chartData.forEach(r => {
+      if (mode !== 'B' && typeof r.ddMain === 'number') vals.push(r.ddMain);
+      if (mode !== 'A' && typeof r.ddSub === 'number') vals.push(r.ddSub);
     });
     if (vals.length === 0) return [-1, 0];
     let min = Math.min(...vals, 0);
@@ -784,7 +944,47 @@ export default function Backtest({ onBack }) {
     if (Math.abs(min) < 0.05) return [-1, 0];
     const pad = Math.max(0.2, Math.abs(min) * 0.08);
     return [Math.min(min - pad, -0.2), 0];
-  }, [results, viewMode]);
+  };
+
+  const colorForSeries = (seriesKey) => (seriesKey === 'A' ? THEME.colors.primary : THEME.colors.secondary);
+
+  const chartTween = useMemo(() => {
+    const fallbackData = results?.chartData || [];
+    const fallbackMode = results?.meta?.viewMode ?? viewMode;
+    const fallbackShowSub = fallbackMode === 'compare';
+
+    const ref = chartTweenRef.current;
+    const fromData = ref.from || fallbackData;
+    const toData = ref.to || fallbackData;
+    if (!fromData?.length || !toData?.length) {
+      return {
+        data: fallbackData,
+        mainColor: colorForSeries('A'),
+        subColor: colorForSeries('B'),
+        subOpacity: fallbackShowSub ? 1 : 0,
+        showSub: fallbackShowSub,
+      };
+    }
+
+    const fromMode = ref.metaFrom?.viewMode ?? viewMode;
+    const toMode = ref.metaTo?.viewMode ?? viewMode;
+    const fromSeries = getSeriesForMode(fromMode);
+    const toSeries = getSeriesForMode(toMode);
+
+    const data = buildTweenData(fromData, toData, chartTweenT, fromSeries, toSeries);
+    const mainColor = mixColor(colorForSeries(fromSeries.main), colorForSeries(toSeries.main), chartTweenT);
+    const subColor = mixColor(colorForSeries(fromSeries.sub), colorForSeries(toSeries.sub), chartTweenT);
+
+    const showSub = fromSeries.showSub || toSeries.showSub;
+    let subOpacity = showSub ? 1 : 0;
+    if (!fromSeries.showSub && toSeries.showSub) subOpacity = chartTweenT;
+    if (fromSeries.showSub && !toSeries.showSub) subOpacity = 1 - chartTweenT;
+
+    return { data, mainColor, subColor, subOpacity, showSub };
+  }, [chartTweenT, chartTweenKey, results, viewMode]);
+
+  const chartDataForRender = chartTween.data || results?.chartData || [];
+  const hasChartData = chartDataForRender.length > 0;
 
   const dynamicStyles = useMemo(() => {
     const mainColor = viewMode === 'B' ? THEME.colors.secondary : THEME.colors.primary;
@@ -803,9 +1003,10 @@ export default function Backtest({ onBack }) {
   const weightOk = Math.abs(activeWeightSum - 100) < 1e-6;
 
   // ✅ Tooltip：对比模式下按“y 值从大到小”自动排序，谁更高谁在上面
-  const CustomValueTooltip = ({ active, payload, label }) => {
+    const CustomValueTooltip = ({ active, payload, label, modeOverride }) => {
     if (!active || !payload?.length) return null;
     const row = payload[0]?.payload || {};
+    const activeViewMode = modeOverride ?? viewMode;
 
     const showChg = (chg) => {
       const n = Number(chg);
@@ -828,9 +1029,9 @@ export default function Backtest({ onBack }) {
       );
     };
 
-    const isCompare = viewMode === "compare";
-    const isSingleA = viewMode === "A";
-    const isSingleB = viewMode === "B";
+    const isCompare = activeViewMode === "compare";
+    const isSingleA = activeViewMode === "A";
+    const isSingleB = activeViewMode === "B";
 
     let items = [];
     if (isCompare) {
@@ -860,9 +1061,10 @@ export default function Backtest({ onBack }) {
     );
   };
 
-  const CustomReturnTooltip = ({ active, payload, label }) => {
+  const CustomReturnTooltip = ({ active, payload, label, modeOverride }) => {
     if (!active || !payload?.length) return null;
     const row = payload[0]?.payload || {};
+    const activeViewMode = modeOverride ?? viewMode;
 
     const show = (v) => {
       const n = Number(v);
@@ -871,9 +1073,9 @@ export default function Backtest({ onBack }) {
       return `${sign}${x.toFixed(2)}%`;
     };
 
-    const isCompare = viewMode === "compare";
-    const isSingleA = viewMode === "A";
-    const isSingleB = viewMode === "B";
+    const isCompare = activeViewMode === "compare";
+    const isSingleA = activeViewMode === "A";
+    const isSingleB = activeViewMode === "B";
 
     let items = [];
     if (isCompare) {
@@ -909,8 +1111,9 @@ export default function Backtest({ onBack }) {
   };
 
   // 🌸 返回 { topCards, leftCards } 方便分开渲染
-  const renderMetricCards = (res, ddWins, isGhost = false) => {
-    if (!res) return { topCards: null, leftCards: null };
+  const renderMetricCards = (res, ddWins, isGhost = false, modeOverride) => {
+    if (!res) return { sideCards: null };
+    const activeViewMode = modeOverride ?? viewMode;
 
     const metrics = [
       { label: '总资产', key: 'value', icon: DollarSign, fmt: v => fmtMoney(v), emoji: '💰' },
@@ -940,7 +1143,7 @@ export default function Backtest({ onBack }) {
       return r.metrics?.[m.key] ?? 0;
     };
 
-    const makeCard = (m, i, isTop) => {
+    const makeCard = (m, i) => {
       const valA = res.dataA ? getVal(res.dataA, 'A', m) : 0;
       const valB = res.dataB ? getVal(res.dataB, 'B', m) : 0;
 
@@ -948,14 +1151,14 @@ export default function Backtest({ onBack }) {
         <div
           {...(!isGhost ? cardFXProps : {})}
           key={i}
-          className={`relative overflow-hidden card-bloom backdrop-blur-md rounded-[14px] border border-white/50 shadow-[0_3px_12px_rgba(255,182,193,0.15)] bg-gradient-to-br from-white/80 to-white/60 hover:from-white/90 hover:to-white/70 transition-all duration-400 ease-out hover:shadow-[0_6px_20px_rgba(255,153,168,0.25)] active:scale-[0.98] ${isTop ? 'flex-1 min-w-0 p-2' : 'p-2.5'}`}
+          className="relative overflow-hidden card-bloom backdrop-blur-md rounded-[14px] border border-white/50 shadow-[0_3px_12px_rgba(255,182,193,0.15)] bg-gradient-to-br from-white/80 to-white/60 hover:from-white/90 hover:to-white/70 transition-all duration-400 ease-out hover:shadow-[0_6px_20px_rgba(255,153,168,0.25)] active:scale-[0.98] p-2.5 flex flex-col justify-between flex-1 min-h-0"
         >
           <div className="flex items-center gap-1.5 mb-1">
             <span className="text-[11px]">{m.emoji}</span>
             <span className="text-[10px] text-[#7A4A5B] font-semibold truncate">{m.label}</span>
           </div>
           <div className="flex flex-col gap-0.5 text-[10px]">
-            {(viewMode === 'A' || viewMode === 'compare') && (
+            {(activeViewMode === 'A' || activeViewMode === 'compare') && (
               <div className="flex items-center justify-between gap-1">
                 <span className="text-[#B58A97] text-[9px]">🌸</span>
                 <span className="font-bold text-[13px] leading-none tabular-nums text-[#FF4FA3]">
@@ -963,7 +1166,7 @@ export default function Backtest({ onBack }) {
                 </span>
               </div>
             )}
-            {(viewMode === 'B' || viewMode === 'compare') && (
+            {(activeViewMode === 'B' || activeViewMode === 'compare') && (
               <div className="flex items-center justify-between gap-1">
                 <span className="text-[#B58A97] text-[9px]">❄️</span>
                 <span className="font-bold text-[13px] leading-none tabular-nums text-[#5A9BFF]">
@@ -977,13 +1180,147 @@ export default function Backtest({ onBack }) {
     };
 
     // 顶部5张，左侧4张
-    const topCards = metrics.slice(0, 5).map((m, i) => makeCard(m, i, true));
-    const leftCards = metrics.slice(5, 9).map((m, i) => makeCard(m, i + 5, false));
+    const sideCards = metrics.map((m, i) => makeCard(m, i));
 
-    return { topCards, leftCards };
+    return { sideCards };
   };
 
-  const chartCurveType = (metricMode === 'value' || scaleMode === 'log') ? 'linear' : 'monotone';
+  const renderChartLayer = (chartData, chartState, ddWins) => {
+    if (!chartData?.length) return null;
+    const chartCurveType = (metricMode === 'value' || scaleMode === 'log') ? 'linear' : 'monotone';
+    const ddDomain = getDdDomain(chartData, chartState.showSub ? 'compare' : 'A');
+    const mainDdWindowLocal = ddWins?.A;
+    const subDdWindowLocal = ddWins?.B;
+    const mainOpacity = 1;
+    const subOpacity = chartState.subOpacity ?? 0;
+    const getDisplayValueDomain = () => {
+      const vals = [];
+      chartData.forEach(r => {
+        ['vMainRaw', 'vSubRaw', 'cMainRaw', 'cSubRaw'].forEach(k => {
+          const v = r?.[k];
+          if (typeof v === 'number' && Number.isFinite(v)) vals.push(v);
+        });
+      });
+      if (vals.length === 0) return null;
+      const min = Math.min(...vals);
+      const max = Math.max(...vals);
+      return [Math.max(0, min), max];
+    };
+    const displayValueDomain = getDisplayValueDomain();
+
+    return (
+      <div className="absolute inset-0" style={{ '--main-color': chartState.mainColor, '--sub-color': chartState.subColor }}>
+        {chartTab === 'value' ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={chartData}>
+              <defs>
+                <linearGradient id="gradMain-tween" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--main-color)" stopOpacity={0.35} className="stop-transition" />
+                  <stop offset="95%" stopColor="#FFF5F8" stopOpacity={0} className="stop-transition" />
+                </linearGradient>
+                <linearGradient id="gradSub-tween" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--sub-color)" stopOpacity={0.35} className="stop-transition" />
+                  <stop offset="95%" stopColor="#F4F7FF" stopOpacity={0} className="stop-transition" />
+                </linearGradient>
+              </defs>
+
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,182,193,0.26)" />
+              <XAxis dataKey="date" tickFormatter={t => t.slice(0, 7)} tick={{ fontSize: 10, fill: '#B58A97' }} axisLine={false} tickLine={false} dy={10} minTickGap={30} />
+              <YAxis
+                type="number"
+                tick={{ fontSize: 10, fill: '#B58A97' }}
+                axisLine={false}
+                tickLine={false}
+                scale={scaleMode}
+                domain={
+                  scaleMode === 'log'
+                    ? [LOG_EPS, 'dataMax']
+                    : (metricMode === 'value'
+                      ? (displayValueDomain || ['dataMin', 'dataMax'])
+                      : ['auto', 'auto'])
+                }
+                allowDataOverflow={scaleMode === 'log'}
+                tickFormatter={v => metricMode === 'value' ? formatAssetTick(v) : formatPercentTick(v)}
+              />
+
+              <Tooltip content={metricMode === 'value' ? <CustomValueTooltip /> : <CustomReturnTooltip />} cursor={{ stroke: "rgba(197,160,166,0.30)", strokeDasharray: "4 4" }} />
+
+              <Area
+                type={chartCurveType}
+                dataKey="vMainPlot"
+                stroke="var(--main-color)"
+                strokeWidth={3.2}
+                strokeOpacity={mainOpacity}
+                strokeLinecap="round"
+                fill="url(#gradMain-tween)"
+                fillOpacity={mainOpacity}
+                isAnimationActive={false}
+                className="transition-all-chart"
+                baseValue={scaleMode === 'log' ? LOG_EPS : 0}
+                activeDot={{ r: 4, strokeWidth: 2 }}
+              />
+
+              <Area
+                type={chartCurveType}
+                dataKey="vSubPlot"
+                stroke="var(--sub-color)"
+                strokeWidth={3.2}
+                strokeOpacity={subOpacity}
+                strokeLinecap="round"
+                fill="url(#gradSub-tween)"
+                fillOpacity={subOpacity}
+                isAnimationActive={false}
+                className="transition-all-chart"
+                baseValue={scaleMode === 'log' ? LOG_EPS : 0}
+                activeDot={{ r: 4, strokeWidth: 2 }}
+              />
+
+              {metricMode === 'value' && (
+                <>
+                  <Line
+                    type={chartCurveType}
+                    dataKey="cMainPlot"
+                    stroke="var(--main-color)"
+                    strokeWidth={2}
+                    dot={false}
+                    strokeDasharray="6 6"
+                    strokeOpacity={0.75 * mainOpacity}
+                    isAnimationActive={false}
+                    strokeLinecap="round"
+                  />
+                  <Line
+                    type={chartCurveType}
+                    dataKey="cSubPlot"
+                    stroke="var(--sub-color)"
+                    strokeWidth={2}
+                    dot={false}
+                    strokeDasharray="6 6"
+                    strokeOpacity={0.75 * subOpacity}
+                    isAnimationActive={false}
+                    strokeLinecap="round"
+                  />
+                </>
+              )}
+            </ComposedChart>
+          </ResponsiveContainer>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,182,193,0.26)" />
+              <XAxis dataKey="date" tick={false} axisLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: '#B58A97' }} axisLine={false} tickLine={false} width={52} domain={ddDomain} tickFormatter={formatPercentTick} tickCount={6} />
+              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', background: 'rgba(255,255,255,0.95)', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }} formatter={(v) => [`${Number(v).toFixed(2)}%`, '回撤']} />
+              <ReferenceLine y={0} stroke="rgba(255,182,193,0.28)" strokeDasharray="4 4" />
+              {mainDdWindowLocal?.hasDrawdown && (<ReferenceArea x1={mainDdWindowLocal.peakDate} x2={mainDdWindowLocal.troughDate} strokeOpacity={0} fill="var(--main-color)" fillOpacity={0.12} />)}
+              {chartState.showSub && subDdWindowLocal?.hasDrawdown && (<ReferenceArea x1={subDdWindowLocal.peakDate} x2={subDdWindowLocal.troughDate} strokeOpacity={0} fill="var(--sub-color)" fillOpacity={0.12} />)}
+              <Line type="step" dataKey="ddMain" stroke="var(--main-color)" strokeWidth={2} strokeOpacity={mainOpacity} dot={false} isAnimationActive={false} className="transition-all-chart" strokeLinecap="round" />
+              <Line type="step" dataKey="ddSub" stroke="var(--sub-color)" strokeWidth={2} strokeOpacity={subOpacity} dot={false} isAnimationActive={false} className="transition-all-chart" strokeLinecap="round" />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div
@@ -1003,7 +1340,7 @@ export default function Backtest({ onBack }) {
       <div className="max-w-screen-2xl mx-auto relative z-10 h-full min-h-0 flex flex-col">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start h-full min-h-0">
           <div className="lg:col-span-3 flex flex-col gap-4 h-full min-h-0">
-            <div className={`${glassCard} p-4 flex flex-col gap-4`}>
+            <div {...cardFXProps} className={`${glassCard} p-4 flex flex-col gap-4`}>
               <div className="flex items-center justify-between gap-3">
                 <button
                   onClick={onBack}
@@ -1244,21 +1581,24 @@ export default function Backtest({ onBack }) {
                 <div className={`${uiSwitching ? "soft-fade " : ""}flex-1 min-h-0 min-w-0 flex flex-col gap-2`}>
                   {/* 🌸 紧凑环绕布局：顶部5卡 + (左侧4卡 + 图表) */}
                   {(() => {
-                    const { topCards, leftCards } = renderMetricCards(results, ddWindows, false);
-                    const ghost = ghostResults ? renderMetricCards(ghostResults, ddWindowsGhost, true) : null;
+                    const { sideCards } = renderMetricCards(results, ddWindows, false, viewMode);
+                    const ghost = ghostResults ? renderMetricCards(ghostResults, ddWindowsGhost, true, ghostResults.meta?.viewMode) : null;
 
                     return (
                       <>
                         {/* 顶部一行：5张卡片紧凑排列 */}
-                        <div className="flex gap-2 shrink-0">
-                          {topCards}
-                        </div>
-
                         {/* 下方区域：左侧4卡 + 图表 */}
                         <div className="flex-1 min-h-0 flex gap-2">
                           {/* 左侧一列：4张卡片垂直排列，均分高度 */}
-                          <div className="w-[130px] shrink-0 flex flex-col gap-2">
-                            {leftCards}
+                          <div className="w-[130px] shrink-0 h-full relative">
+                            {ghost?.sideCards && (
+                              <div className="absolute inset-0 flex flex-col gap-1.5 h-full pointer-events-none ghost-out">
+                                {ghost.sideCards}
+                              </div>
+                            )}
+                            <div className={`relative flex flex-col gap-1.5 h-full ${uiSwitching ? 'ghost-in' : ''}`}>
+                              {sideCards}
+                            </div>
                           </div>
 
                           {/* 图表区域：充满剩余空间 */}
@@ -1290,118 +1630,13 @@ export default function Backtest({ onBack }) {
 
                             {/* Chart wrapper: square, fills available space */}
                             <div className="flex-1 min-h-0 min-w-0 flex items-center justify-center">
-                              <div className="w-full h-full" style={{ maxWidth: 'min(100%, 100%)', aspectRatio: '1 / 1' }}>
+                              <div className="relative w-full h-full" style={{ maxWidth: 'min(100%, 100%)', aspectRatio: '1 / 1' }}>
                                 {!hasChartData ? (
                                   <div className="h-full w-full rounded-2xl bg-white/50 border border-white/60 flex items-center justify-center text-sm font-semibold text-[#9A7381]">
                                     暂无图表数据，请先运行回测 ✨
                                   </div>
-                                ) : chartTab === 'value' ? (
-                                  <ResponsiveContainer key={chartKey} width="100%" height="100%">
-                                    <ComposedChart data={results.chartData}>
-                                      <defs>
-                                        <linearGradient id="gradMain" x1="0" y1="0" x2="0" y2="1">
-                                          <stop offset="5%" stopColor="var(--main-color)" stopOpacity={0.35} className="stop-transition" />
-                                          <stop offset="95%" stopColor="#FFF5F8" stopOpacity={0} className="stop-transition" />
-                                        </linearGradient>
-                                        <linearGradient id="gradSub" x1="0" y1="0" x2="0" y2="1">
-                                          <stop offset="5%" stopColor="var(--sub-color)" stopOpacity={0.35} className="stop-transition" />
-                                          <stop offset="95%" stopColor="#F4F7FF" stopOpacity={0} className="stop-transition" />
-                                        </linearGradient>
-                                      </defs>
-
-                                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,182,193,0.26)" />
-                                      <XAxis dataKey="date" tickFormatter={t => t.slice(0, 7)} tick={{ fontSize: 10, fill: '#B58A97' }} axisLine={false} tickLine={false} dy={10} minTickGap={30} />
-                                      <YAxis
-                                        type="number"
-                                        tick={{ fontSize: 10, fill: '#B58A97' }}
-                                        axisLine={false}
-                                        tickLine={false}
-                                        scale={scaleMode}
-                                        domain={
-                                          scaleMode === 'log'
-                                            ? [LOG_EPS, 'dataMax']
-                                            : (metricMode === 'value'
-                                              ? (results.yDomainLinearValue || ['dataMin', 'dataMax'])
-                                              : ['auto', 'auto'])
-                                        }
-                                        allowDataOverflow={scaleMode === 'log'}
-                                        tickFormatter={v => metricMode === 'value' ? formatAssetTick(v) : formatPercentTick(v)}
-                                      />
-
-                                      <Tooltip content={metricMode === 'value' ? <CustomValueTooltip /> : <CustomReturnTooltip />} cursor={{ stroke: "rgba(197,160,166,0.30)", strokeDasharray: "4 4" }} />
-
-                                      <Area
-                                        type={chartCurveType}
-                                        dataKey="vMainPlot"
-                                        stroke="var(--main-color)"
-                                        strokeWidth={3.2}
-                                        strokeLinecap="round"
-                                        fill="url(#gradMain)"
-                                        animationDuration={1200}
-                                        className="transition-all-chart"
-                                        baseValue={scaleMode === 'log' ? LOG_EPS : 0}
-                                        activeDot={{ r: 4, strokeWidth: 2 }}
-                                      />
-
-                                      {viewMode === 'compare' && (
-                                        <Area
-                                          type={chartCurveType}
-                                          dataKey="vSubPlot"
-                                          stroke="var(--sub-color)"
-                                          strokeWidth={3.2}
-                                          strokeLinecap="round"
-                                          fill="url(#gradSub)"
-                                          animationDuration={1200}
-                                          className="transition-all-chart"
-                                          baseValue={scaleMode === 'log' ? LOG_EPS : 0}
-                                          activeDot={{ r: 4, strokeWidth: 2 }}
-                                        />
-                                      )}
-
-                                      {metricMode === 'value' && (
-                                        <>
-                                          <Line
-                                            type={chartCurveType}
-                                            dataKey="cMainPlot"
-                                            stroke="var(--main-color)"
-                                            strokeWidth={2}
-                                            dot={false}
-                                            strokeDasharray="6 6"
-                                            strokeOpacity={0.75}
-                                            animationDuration={900}
-                                            strokeLinecap="round"
-                                          />
-                                          {viewMode === 'compare' && (
-                                            <Line
-                                              type={chartCurveType}
-                                              dataKey="cSubPlot"
-                                              stroke="var(--sub-color)"
-                                              strokeWidth={2}
-                                              dot={false}
-                                              strokeDasharray="6 6"
-                                              strokeOpacity={0.75}
-                                              animationDuration={900}
-                                              strokeLinecap="round"
-                                            />
-                                          )}
-                                        </>
-                                      )}
-                                    </ComposedChart>
-                                  </ResponsiveContainer>
                                 ) : (
-                                  <ResponsiveContainer key={chartKey} width="100%" height="100%">
-                                    <LineChart data={results.chartData}>
-                                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,182,193,0.26)" />
-                                      <XAxis dataKey="date" tick={false} axisLine={false} />
-                                      <YAxis tick={{ fontSize: 10, fill: '#B58A97' }} axisLine={false} tickLine={false} width={52} domain={ddDomain} tickFormatter={formatPercentTick} tickCount={6} />
-                                      <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', background: 'rgba(255,255,255,0.95)', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }} formatter={(v) => [`${Number(v).toFixed(2)}%`, '???']} />
-                                      <ReferenceLine y={0} stroke="rgba(255,182,193,0.28)" strokeDasharray="4 4" />
-                                      {mainDdWindow?.hasDrawdown && (<ReferenceArea x1={mainDdWindow.peakDate} x2={mainDdWindow.troughDate} strokeOpacity={0} fill="var(--main-color)" fillOpacity={0.12} />)}
-                                      {subDdWindow?.hasDrawdown && (<ReferenceArea x1={subDdWindow.peakDate} x2={subDdWindow.troughDate} strokeOpacity={0} fill="var(--sub-color)" fillOpacity={0.12} />)}
-                                      <Line type="step" dataKey="ddMain" stroke="var(--main-color)" strokeWidth={2} dot={false} animationDuration={1200} className="transition-all-chart" strokeLinecap="round" />
-                                      {viewMode === 'compare' && (<Line type="step" dataKey="ddSub" stroke="var(--sub-color)" strokeWidth={2} dot={false} animationDuration={1200} className="transition-all-chart" strokeLinecap="round" />)}
-                                    </LineChart>
-                                  </ResponsiveContainer>
+                                  renderChartLayer(chartDataForRender, chartTween, ddWindows)
                                 )}
                               </div>
                             </div>
@@ -1506,7 +1741,7 @@ export default function Backtest({ onBack }) {
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #FFE1EC; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 
-        .transition-all-chart path { transition: stroke 1s ease, fill 1s ease, stroke-opacity 1s ease, fill-opacity 1s ease; }
+        .transition-all-chart { transition: stroke 1s ease, fill 1s ease, stroke-opacity 1s ease, fill-opacity 1s ease; }
         .stop-transition { transition: stop-color 1s ease; }
 
         @keyframes blob-breathe {
@@ -1589,8 +1824,8 @@ export default function Backtest({ onBack }) {
           border-color: rgba(255, 194, 209, 0.85);
         }
 
-        .ghost-out { animation: ghostFadeOut 260ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .ghost-in { animation: ghostFadeIn 260ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .ghost-out { animation: ghostFadeOut 520ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .ghost-in { animation: ghostFadeIn 520ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         @keyframes ghostFadeOut {
           0% { opacity: 1; filter: blur(0px); transform: translateY(0px); }
           100% { opacity: 0; filter: blur(1.2px); transform: translateY(1px); }
