@@ -1,0 +1,265 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 漫画阅读页：护眼/亮度用 CSS 变量，便于 JS 调节 */
+.comic-reader-page {
+  --comic-brightness: 1;
+  --comic-contrast: 1;
+  --comic-page-filter: brightness(var(--comic-brightness)) contrast(var(--comic-contrast));
+  --comic-scrollbar: #E8D4DC;
+  --comic-scrollbar-hover: #9B7A85;
+}
+
+.comic-reader-page .comic-reader-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+.comic-reader-page .comic-reader-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.comic-reader-page .comic-reader-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--comic-scrollbar);
+  border-radius: 999px;
+}
+.comic-reader-page .comic-reader-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--comic-scrollbar-hover);
+}
+
+/* ✅ 全站共享：Backtest（回测页）风格动效与氛围（从 Backtest.jsx 抽出来） */
+.animation-delay-2000 { animation-delay: 2s; }
+.animation-delay-3000 { animation-delay: 3s; }
+.animation-delay-4000 { animation-delay: 4s; }
+
+
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: var(--mx-scroll-thumb, #FFC2D1); border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+
+.transition-all-chart path { transition: stroke 1s ease, fill 1s ease, stroke-opacity 1s ease, fill-opacity 1s ease; }
+.stop-transition { transition: stop-color 1s ease; }
+
+@keyframes blob-breathe {
+  0%, 100% { transform: translate(0px, 0px) scale(1); opacity: 0.6; }
+  33% { transform: translate(30px, -50px) scale(1.1); opacity: 0.7; }
+  66% { transform: translate(-20px, 20px) scale(0.9); opacity: 0.5; }
+}
+.animate-blob-breathe { animation: blob-breathe 18s infinite ease-in-out; }
+.animate-bounce-slow { animation: bounce 4s infinite; }
+.animate-fade-in-up { animation: fadeInUp 0.8s ease-out; }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+@keyframes toast-bounce-in {
+  0% { opacity: 0; transform: translate(-50%, -20px) scale(0.9); }
+  50% { transform: translate(-50%, 5px) scale(1.02); }
+  100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+.toast-bounce { animation: toast-bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
+
+.noise-overlay {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E");
+  opacity: 0.14; mix-blend-mode: soft-light;
+}
+.vignette {
+  background: radial-gradient(
+    ellipse at center,
+    var(--mx-vignette-center, rgba(255, 240, 245, 0.08)) 0%,
+    var(--mx-vignette-mid, rgba(255, 240, 245, 0.16)) 45%,
+    var(--mx-vignette-edge, rgba(139, 79, 88, 0.10)) 100%
+  );
+  opacity: 0.9;
+}
+
+.card-bloom { transform-style: preserve-3d; will-change: transform; transition: transform 420ms cubic-bezier(0.16, 1, 0.3, 1); }
+.card-bloom::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at var(--mx, 50%) var(--my, 50%),
+    var(--mx-bloom-a, rgba(255, 194, 209, 0.65)) 0%,
+    var(--mx-bloom-b, rgba(186, 225, 255, 0.35)) 35%,
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.card-bloom:hover::before { opacity: 1; }
+
+.card-bloom::after {
+  content: ""; position: absolute; inset: 0; border-radius: 26px;
+  background: linear-gradient(115deg, transparent 0%, rgba(255,255,255,0.0) 35%, rgba(255,255,255,0.60) 50%, rgba(255,255,255,0.0) 65%, transparent 100%);
+  opacity: 0; transform: translateX(-60%); pointer-events: none; z-index: 0;
+}
+.card-bloom:hover::after { opacity: 0.70; animation: shimmerSweep 1.8s ease-in-out infinite; }
+@keyframes shimmerSweep { 0% { transform: translateX(-60%); } 100% { transform: translateX(60%); } }
+
+.card-pop-in { animation: cardPopIn 520ms cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes cardPopIn {
+  0% { filter: saturate(1) brightness(1); }
+  35% { filter: saturate(1.06) brightness(1.03); }
+  70% { filter: saturate(1.02) brightness(1.01); }
+  100% { filter: saturate(1) brightness(1); }
+}
+
+.card-bloom > * { position: relative; z-index: 1; }
+
+.ripple-effect {
+  position: absolute; border-radius: 50%; background: rgba(255,255,255,0.6);
+  width: 10px; height: 10px; transform: translate(-50%, -50%) scale(0); pointer-events: none;
+  animation: ripple-anim 0.6s ease-out; z-index: 0;
+}
+@keyframes ripple-anim { to { transform: translate(-50%, -50%) scale(12); opacity: 0; } }
+
+.soft-fade { animation: softFade 320ms cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes softFade {
+  0% { opacity: 0.78; filter: blur(1.0px); transform: translateY(2px); }
+  100% { opacity: 1; filter: blur(0); transform: translateY(0); }
+}
+
+.progress-glow { box-shadow: 0 0 12px rgba(255,143,171,0.6), 0 0 24px rgba(255,143,171,0.4); }
+
+.fund-item { position: relative; overflow: hidden; }
+.fund-item::before{
+  content:""; position:absolute; inset:-1px; border-radius: 14px;
+  background: radial-gradient(320px circle at 30% 20%, rgba(255,143,171,0.22), rgba(137,207,240,0.12) 35%, transparent 70%);
+  opacity: 0; transition: opacity 420ms ease; pointer-events:none;
+}
+.fund-item:hover::before{ opacity: 1; }
+.fund-item:hover{
+  transform: translateY(-1px) scale(1.01);
+  box-shadow: 0 10px 26px rgba(255,143,171,0.18);
+  border-color: rgba(255, 194, 209, 0.85);
+}
+
+.ghost-out { animation: ghostFadeOut 260ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.ghost-in { animation: ghostFadeIn 260ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+@keyframes ghostFadeOut {
+  0% { opacity: 1; filter: blur(0px); transform: translateY(0px); }
+  100% { opacity: 0; filter: blur(1.2px); transform: translateY(1px); }
+}
+@keyframes ghostFadeIn {
+  0% { opacity: 0; filter: blur(1.2px); transform: translateY(1px); }
+  100% { opacity: 1; filter: blur(0px); transform: translateY(0px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .soft-fade, .card-bloom, .card-bloom::before, .card-bloom::after, .ripple-effect, .card-pop-in, .ghost-out, .ghost-in { animation: none !important; transition: none !important; }
+  .fund-item, .fund-item::before { transition: none !important; }
+}
+
+/* ------------------------------ */
+/* MX Reader (慕溪专属) utilities  */
+/* ------------------------------ */
+
+.mx-reader-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.mx-reader-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(210, 95, 132, 0.22);
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+}
+
+.mx-reader-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+
+.mx-mark {
+  background: rgba(255, 167, 200, 0.35);
+  border-radius: 0.55em;
+  padding: 0.02em 0.18em;
+}
+
+.mx-night .mx-mark {
+  background: rgba(255, 167, 200, 0.22);
+}
+
+
+@layer utilities {
+  /* Reader helpers */
+  .mx-indent { text-indent: 2em; }
+
+  .mx-reader-day { color: #2b1b22; }
+  .mx-reader-night { color: rgba(255,255,255,0.92); }
+
+  /* Scrollbar (both vertical + horizontal) */
+  .mx-reader-scrollbar { scrollbar-gutter: stable; }
+  .mx-reader-scrollbar::-webkit-scrollbar { width: 10px; height: 10px; }
+  .mx-reader-scrollbar::-webkit-scrollbar-track { background: transparent; }
+  .mx-reader-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 143, 171, 0.45);
+    border-radius: 9999px;
+    border: 2px solid rgba(255,255,255,0.35);
+  }
+  .mx-night .mx-reader-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 143, 171, 0.28);
+    border-color: rgba(0,0,0,0.25);
+  }
+
+  /* Keep paragraphs from breaking across columns in book mode */
+  .break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
+}
+
+/* =========================================================
+   Tone variables（不同 tone 的配色变量）
+   - BacktestShell 根节点会带 tone-xxx class
+   - 这里统一控制 vignette / bloom / scrollbar 等氛围色
+   ========================================================= */
+.tone-default {
+  --mx-scroll-thumb: #FFC2D1;
+  --mx-bloom-a: rgba(255, 194, 209, 0.65);
+  --mx-bloom-b: rgba(186, 225, 255, 0.35);
+  --mx-vignette-center: rgba(255, 240, 245, 0.08);
+  --mx-vignette-mid: rgba(255, 240, 245, 0.16);
+  --mx-vignette-edge: rgba(139, 79, 88, 0.10);
+}
+
+.tone-pink {
+  /* ✅ 2026-01 迭代：把 pink tone 整体降饱和/降对比，变成「浅浅奶油粉」 */
+  --mx-scroll-thumb: #FFB9D1;
+  --mx-bloom-a: rgba(255, 126, 169, 0.32);
+  --mx-bloom-b: rgba(233, 217, 255, 0.22);
+  --mx-vignette-center: rgba(255, 246, 250, 0.06);
+  --mx-vignette-mid: rgba(255, 241, 246, 0.14);
+  --mx-vignette-edge: rgba(122, 62, 75, 0.08);
+}
+
+.tone-sakura {
+  --mx-scroll-thumb: #FFB4D6;
+  --mx-bloom-a: rgba(255, 45, 138, 0.46);
+  --mx-bloom-b: rgba(255, 208, 232, 0.40);
+  --mx-vignette-center: rgba(255, 246, 252, 0.08);
+  --mx-vignette-mid: rgba(255, 230, 242, 0.18);
+  --mx-vignette-edge: rgba(107, 46, 59, 0.10);
+}
+
+.tone-cotton {
+  --mx-scroll-thumb: #FFC1E0;
+  --mx-bloom-a: rgba(255, 79, 160, 0.40);
+  --mx-bloom-b: rgba(247, 227, 255, 0.38);
+  --mx-vignette-center: rgba(255, 246, 252, 0.08);
+  --mx-vignette-mid: rgba(255, 231, 244, 0.18);
+  --mx-vignette-edge: rgba(109, 46, 68, 0.10);
+}
+
+.tone-strawberry {
+  --mx-scroll-thumb: #FFB6CE;
+  --mx-bloom-a: rgba(255, 59, 115, 0.36);
+  --mx-bloom-b: rgba(255, 154, 184, 0.38);
+  --mx-vignette-center: rgba(255, 246, 250, 0.08);
+  --mx-vignette-mid: rgba(255, 232, 240, 0.18);
+  --mx-vignette-edge: rgba(122, 45, 62, 0.10);
+}
+
+.tone-iphone15 {
+  --mx-scroll-thumb: #FAD0DA;
+  --mx-bloom-a: rgba(255, 59, 134, 0.30);
+  --mx-bloom-b: rgba(250, 208, 218, 0.42);
+  --mx-vignette-center: rgba(255, 246, 250, 0.08);
+  --mx-vignette-mid: rgba(255, 231, 238, 0.18);
+  --mx-vignette-edge: rgba(106, 49, 67, 0.10);
+}

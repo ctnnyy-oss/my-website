@@ -1,0 +1,13 @@
+[
+  {
+    "id": "n002",
+    "title": "《笼中鸟的光》",
+    "desc": "正文在 public/Novels/data/longzhongniao/text.txt，点击“打开”即可阅读。",
+    "cover": "Novels/data/longzhongniao/cover.png",
+    "link": "Novels/data/longzhongniao/text.txt",
+    "tags": [
+      "原创",
+      "连载"
+    ]
+  }
+]

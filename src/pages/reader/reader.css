@@ -1,0 +1,243 @@
+/* Reader UI (阅读器) — 慕溪专属：草莓牛奶粉 + 甜但高级
+   ✅ 双页模式：真正“书本双页左右翻”（非 column-count）
+*/
+
+.reader-paper {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.35) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.70);
+  box-shadow:
+    0 22px 70px rgba(255, 163, 190, 0.18),
+    0 8px 26px rgba(139, 79, 88, 0.10);
+}
+
+.reader-toolbar {
+  background: rgba(255, 255, 255, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow:
+    0 14px 44px rgba(255, 163, 190, 0.18),
+    0 8px 18px rgba(139, 79, 88, 0.08);
+  backdrop-filter: blur(18px);
+}
+
+.reader-chip {
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow: 0 6px 18px rgba(255, 163, 190, 0.14);
+}
+
+.reader-title-glow {
+  text-shadow: 0 10px 26px rgba(255, 163, 190, 0.22);
+}
+
+.reader-drawer {
+  background: rgba(255, 255, 255, 0.58);
+  border-left: 1px solid rgba(255, 255, 255, 0.80);
+  box-shadow: -16px 0 50px rgba(139, 79, 88, 0.10);
+  backdrop-filter: blur(20px);
+}
+
+/* =========================
+   ✅ 双页书本模式（核心样式）
+   ========================= */
+
+.reader-book-viewport{
+  position: relative;
+  overflow: hidden;         /* 禁止纵向滚动 */
+}
+
+/* spread：两页 + 中缝 */
+.reader-spread{
+  position: relative;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: stretch;
+  gap: 44px;
+  padding: 0;
+  user-select: text;
+}
+
+/* 翻页动效（轻微即可，避免花哨） */
+.reader-spread.turn-next{
+  animation: mxSpreadNext 220ms ease-out both;
+}
+.reader-spread.turn-prev{
+  animation: mxSpreadPrev 220ms ease-out both;
+}
+@keyframes mxSpreadNext{
+  from{ opacity: .78; transform: translateX(10px); filter: blur(.2px); }
+  to  { opacity: 1;   transform: translateX(0);    filter: blur(0); }
+}
+@keyframes mxSpreadPrev{
+  from{ opacity: .78; transform: translateX(-10px); filter: blur(.2px); }
+  to  { opacity: 1;   transform: translateX(0);     filter: blur(0); }
+}
+@media (prefers-reduced-motion: reduce){
+  .reader-spread.turn-next,
+  .reader-spread.turn-prev{ animation: none; }
+}
+
+/* 单页“纸张” */
+.reader-page{
+  position: relative;
+  height: 100%;
+  border-radius: 22px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 140% at 20% 10%, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0.56) 55%, rgba(255, 255, 255, 0.50) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.70), rgba(255, 255, 255, 0.56));
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 18px 58px rgba(255, 163, 190, 0.18),
+    0 8px 18px rgba(139, 79, 88, 0.10);
+}
+
+/* 纸张细节：边缘轻微暗角 + 纸纹 */
+.reader-page::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(90% 70% at 50% 35%, rgba(0,0,0,0) 0%, rgba(106,58,68,0.06) 70%, rgba(106,58,68,0.10) 100%),
+    repeating-linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.00) 0px,
+      rgba(255, 255, 255, 0.00) 14px,
+      rgba(255, 220, 232, 0.08) 15px
+    );
+  opacity: .55;
+}
+
+/* 页码（右下角） */
+.reader-page::after{
+  content: attr(data-page-label);
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
+  font-size: 12px;
+  letter-spacing: .2px;
+  opacity: .55;
+  pointer-events: none;
+}
+
+/* 内容区域 */
+.reader-page-inner{
+  height: 100%;
+  overflow: hidden;         /* 不允许页内滚动（像书） */
+  padding: 24px 26px;
+}
+
+/* 中缝（书脊） */
+.reader-crease{
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  bottom: 10px;
+  width: 40px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background:
+    radial-gradient(55% 100% at 50% 50%, rgba(106,58,68,0.08) 0%, rgba(106,58,68,0.04) 35%, rgba(0,0,0,0) 70%),
+    linear-gradient(90deg, rgba(255, 210, 223, 0.00), rgba(255, 210, 223, 0.55), rgba(255, 210, 223, 0.00));
+  filter: blur(.2px);
+  opacity: .85;
+}
+
+/* 点击翻页热区（左右） */
+.reader-page-zone{
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 38%;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  outline: none;
+  transition: background 120ms ease;
+}
+
+.reader-page-zone.left{ left: 0; }
+.reader-page-zone.right{ right: 0; }
+
+.reader-page-zone::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.reader-page-zone.left::after{
+  background: linear-gradient(90deg, rgba(255, 170, 200, 0.10) 0%, rgba(255,255,255,0) 60%);
+}
+.reader-page-zone.right::after{
+  background: linear-gradient(270deg, rgba(255, 170, 200, 0.10) 0%, rgba(255,255,255,0) 60%);
+}
+
+.reader-page-zone:hover::after{ opacity: 1; }
+.reader-page-zone:active::after{ opacity: .65; }
+
+.reader-page-zone:disabled{
+  cursor: default;
+}
+.reader-page-zone:disabled::after{
+  opacity: 0 !important;
+}
+
+/* 分页测量容器：要和真实页面同款 padding，避免分页误差 */
+.reader-measure{
+  position: fixed;
+  left: -99999px;
+  top: 0;
+  visibility: hidden;
+  pointer-events: none;
+  overflow: hidden;
+  padding: 24px 26px;
+  box-sizing: border-box;
+  white-space: normal;
+}
+
+/* 响应式：小屏可继续双页，但会更紧；如你想改成单页可再迭代 */
+@media (max-width: 1024px) {
+  .reader-spread{
+    gap: 18px;
+  }
+  .reader-page-inner{
+    padding: 18px 18px;
+  }
+  .reader-crease{
+    display: none;
+  }
+}
+
+
+/* ===============================
+   Book flip micro-animation
+   - 不做仿真翻页，只做轻量“左右滑入”；
+   - 去掉 blur/filter，避免某些浏览器抖动/闪一下
+================================ */
+.reader-spread {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.mx-flip-right { animation: mxFlipRight 220ms ease-out; }
+.mx-flip-left  { animation: mxFlipLeft 220ms ease-out; }
+
+@keyframes mxFlipRight {
+  from { opacity: 0.85; transform: translate3d(-10px, 0, 0); }
+  to   { opacity: 1;    transform: translate3d(0, 0, 0); }
+}
+
+@keyframes mxFlipLeft {
+  from { opacity: 0.85; transform: translate3d(10px, 0, 0); }
+  to   { opacity: 1;    transform: translate3d(0, 0, 0); }
+}

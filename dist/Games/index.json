@@ -1,0 +1,13 @@
+[
+  {
+    "id": "g001",
+    "title": "示例：小小游戏",
+    "desc": "可以放 itch.io（游戏平台）或 GitHub（代码仓库）链接。",
+    "cover": "Games/data/g001/cover.png",
+    "link": "https://example.com",
+    "tags": [
+      "web",
+      "prototype"
+    ]
+  }
+]
