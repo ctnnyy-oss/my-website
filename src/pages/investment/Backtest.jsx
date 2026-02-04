@@ -932,42 +932,38 @@ export default function Backtest({ onBack }) {
       <aside className="w-[360px] h-full flex flex-col border-r border-white/40 bg-white/20 backdrop-blur-xl z-20 relative shadow-[4px_0_24px_rgba(255,182,193,0.1)]">
         {/* 顶部标题区 */}
         <div className="p-2 pb-0">
-          <div className="flex items-center gap-2">
-            <button onClick={onBack} className="ripple-button flex items-center gap-2 px-3 py-1.5 bg-white/60 backdrop-blur-md rounded-full shadow-sm text-[#8B4F58] font-bold hover:bg-white hover:text-[#FF8FAB] transition-all text-[13px]">
-              <ArrowLeft size={14} /> 返回主页
-            </button>
-            <div className="flex-1 h-[1px] rounded-full bg-gradient-to-r from-[#FFD2DD] via-[#FFE7EE] to-transparent"></div>
-          </div>
+          <div className="bg-white/60 border border-white/70 rounded-[26px] p-3 shadow-[0_10px_28px_rgba(255,182,193,0.16)] mb-2.5 card-bloom">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <button onClick={onBack} className="ripple-button flex items-center gap-2 px-3 py-1.5 bg-white/80 backdrop-blur-md rounded-full shadow-sm text-[#8B4F58] font-bold hover:bg-white hover:text-[#FF8FAB] transition-all text-[13px]">
+                <ArrowLeft size={14} /> 返回主页
+              </button>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 border border-white/80 text-[11px] font-bold text-[#8B4F58] shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-[#FF8FAB]"></span> 投资组合回测模型
+              </div>
+            </div>
 
-          <div className="flex items-start justify-between gap-3 mt-1">
             <div>
               <h1 className="relative text-[36px] font-black text-[#8B4F58] leading-none tracking-wide">
                 <span className="relative z-10">双子星</span>
                 <span className="absolute -bottom-1 left-0 h-2 w-[84px] rounded-full bg-[#FFB6C1]/45"></span>
               </h1>
-              <div className="flex gap-2 mt-1 text-[10px] font-bold text-[#C5A0A6] tracking-tight">
-                <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-[#FF8FAB]"></span> 细水长流</span>
-                <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-[#89CFF0]"></span> 五等分</span>
+              <div className="flex gap-2 mt-2 text-[11px] font-bold text-[#C5A0A6] tracking-tight">
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#FF8FAB]"></span> 细水长流</span>
+                <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[#89CFF0]"></span> 五等分</span>
               </div>
-            </div>
-
-            <div className="rounded-2xl bg-white/85 border border-[#FFD2DD] px-3.5 py-2 shadow-[0_6px_18px_rgba(255,182,193,0.18)] text-right">
-              <div className="text-[14px] font-black text-[#8B4F58] leading-tight">投资组合</div>
-              <div className="text-[14px] font-black text-[#8B4F58] leading-tight">回测模型</div>
-              <div className="mt-1 h-1 w-12 rounded-full bg-[#FFD2DD]/70 ml-auto"></div>
             </div>
           </div>
         </div>
 
         {/* 滚动设置区 */}
-        <div className="flex-1 min-h-0 px-4 py-0.5 -mt-2 flex flex-col gap-1.5">
+        <div className="flex-1 min-h-0 px-3.5 py-0 flex flex-col gap-2.5">
           {/* 1. 回测设定 */}
-          <div className="bg-white/40 border border-white/50 rounded-2xl p-3 shadow-sm backdrop-blur-md card-bloom">
+          <div className="bg-white/40 border border-white/50 rounded-2xl p-2.5 shadow-sm backdrop-blur-md card-bloom">
             <div className="flex items-center gap-2 mb-2 text-[#8B4F58] font-bold text-[14px]">
               <Calendar size={14} /> 回测设定
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div>
                 <label className="text-[11px] font-bold text-[#C5A0A6] mb-1 block">开始日期</label>
                 <input type="date" value={params.startDate} onChange={e => setParams({ ...params, startDate: e.target.value })} className={glassInput} />
@@ -987,7 +983,7 @@ export default function Backtest({ onBack }) {
           </div>
 
           {/* 2. 基金配置 */}
-          <div className="bg-white/40 border border-white/50 rounded-2xl p-3 shadow-sm backdrop-blur-md card-bloom flex flex-col flex-1 min-h-0">
+          <div className="bg-white/40 border border-white/50 rounded-2xl p-2.5 shadow-sm backdrop-blur-md card-bloom flex flex-col flex-1 min-h-0">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2 text-[#8B4F58] font-bold text-[14px]">
                 <Layers size={14} /> 基金配置
@@ -1028,28 +1024,16 @@ export default function Backtest({ onBack }) {
                   </div>
                 ))}
               </div>
-              <button onClick={() => {
-                const l = activeTab === 'A' ? [...fundsA] : [...fundsB]; l.push({ code: '', weight: 0 }); activeTab === 'A' ? setFundsA(l) : setFundsB(l);
-              }} className="mt-2 w-full py-2 border border-dashed border-[#FFC2D1] rounded-lg text-[11px] font-bold text-[#FF8FAB] hover:bg-[#FFF0F5] transition-colors">+ 添加</button>
             </div>
           </div>
         </div>
 
         {/* 底部按钮区 */}
-        <div className="p-4 pt-2 space-y-2 bg-white/10 backdrop-blur-md">
-          <button onClick={runBacktest} disabled={loading} className="ripple-button w-full py-3 rounded-xl font-black text-white text-[15px] shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 group relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #FF8FAB 0%, #FFB6C1 100%)' }}>
-            {loading ? <Sparkles className="animate-spin" size={18} /> : <Play fill="currentColor" size={18} />}
-            <span className="z-10 relative">{loading ? progress : '开启回测之旅'}</span>
+        <div className="p-3 pt-1.5 mt-2.5 bg-white/10 backdrop-blur-md">
+          <button onClick={runBacktest} disabled={loading} className="ripple-button w-full py-2.5 rounded-xl font-black text-white text-[15px] shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center justify-center group relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #FF8FAB 0%, #FFB6C1 100%)' }}>
+            <span className="z-10 relative">开启回测之旅</span>
             <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
           </button>
-          <div className="flex gap-2">
-            <button onClick={handleResetDefaults} className="flex-1 py-2 rounded-xl text-[10px] font-bold text-[#FF5D7D] bg-white/40 hover:bg-white border border-white/60 transition-all flex items-center justify-center gap-1">
-              <RotateCcw size={11} /> 恢复默认
-            </button>
-            <button onClick={handleClearResults} className="flex-1 py-2 rounded-xl text-[10px] font-bold text-[#8B4F58] bg-white/30 hover:bg-white border border-white/60 transition-all flex items-center justify-center gap-1">
-              <Trash2 size={11} /> 清空结果
-            </button>
-          </div>
         </div>
       </aside>
 
@@ -1057,8 +1041,8 @@ export default function Backtest({ onBack }) {
       <main className="flex-1 flex flex-col min-w-0 relative z-10">
 
         {/* 顶栏 */}
-        <header className="h-[64px] flex items-center px-6 bg-white/30 backdrop-blur-sm border-b border-white/40">
-          <div className="flex items-center gap-3 flex-wrap">
+        <header className="h-[58px] flex items-center px-5 bg-white/30 backdrop-blur-sm border-b border-white/40">
+          <div className="flex items-center gap-2.5 flex-wrap">
             {/* 回测区间 */}
             <div className="flex items-center bg-white/50 p-1 rounded-xl shadow-inner">
               <span className="px-2 text-[10px] font-bold text-[#C5A0A6]">区间</span>
@@ -1093,7 +1077,7 @@ export default function Backtest({ onBack }) {
             </div>
           
             {/* Metric & Scale Toggles */}
-            <div className="flex items-center gap-3 bg-white/40 px-3 py-1 rounded-2xl border border-white/50 shadow-sm backdrop-blur-md">
+            <div className="flex items-center gap-2.5 bg-white/40 px-2.5 py-0.5 rounded-2xl border border-white/50 shadow-sm backdrop-blur-md">
               <ToggleGroup value={metricMode} onChange={setMetricMode} options={[
                 { value: 'value', label: '资产', icon: DollarSign },
                 { value: 'return', label: '收益', icon: Percent }
@@ -1123,9 +1107,9 @@ export default function Backtest({ onBack }) {
             </div>
           </div>
         ) : (
-          <div className="flex-1 min-h-0 grid grid-cols-[200px_1fr] gap-4 p-4 overflow-hidden">
+          <div className="flex-1 min-h-0 grid grid-cols-[200px_1fr] gap-3 p-3 overflow-hidden">
             {/* 1. 中间指标列 */}
-            <div className={`space-y-2 ${uiSwitching ? 'soft-fade' : ''}`}>
+            <div className={`grid grid-rows-[repeat(9,minmax(0,1fr))] gap-1.5 h-full ${uiSwitching ? 'soft-fade' : ''}`}>
               {[
                 { label: '累计收益率', key: 'totalReturn', icon: Percent, fmt: v => `${Number(v || 0).toFixed(2)}%`, color: '#EB5757' },
                 { label: '真实收益率', key: 'realReturn', icon: Sparkles, fmt: v => `${Number(v || 0).toFixed(2)}%`, color: '#34C759' },
@@ -1156,7 +1140,7 @@ export default function Backtest({ onBack }) {
                 const valB = results.dataB ? getVal(results.dataB, 'B') : 0;
 
                 return (
-                  <div key={i} className="metric-card relative overflow-hidden bg-white/70 backdrop-blur-xl border border-white/70 rounded-2xl p-2.5 shadow-[0_6px_20px_rgba(255,182,193,0.08)] hover:bg-white hover:scale-[1.02] transition-all duration-300 group">
+                  <div key={i} className="metric-card relative overflow-hidden bg-white/70 backdrop-blur-xl border border-white/70 rounded-2xl p-2.5 shadow-[0_6px_20px_rgba(255,182,193,0.08)] hover:bg-white hover:scale-[1.02] transition-all duration-300 group flex flex-col justify-center min-h-0">
                     <div className="absolute inset-0 opacity-60" style={{ background: 'linear-gradient(135deg, rgba(255,143,171,0.10) 0%, rgba(137,207,240,0.10) 100%)' }} />
                     <div className="absolute right-2 top-2 h-1.5 w-10 rounded-full opacity-60" style={{ background: m.color }} />
                     <div className="relative">
@@ -1201,11 +1185,11 @@ export default function Backtest({ onBack }) {
             </div>
 
             {/* 2. 右侧图表列 */}
-            <div className={`flex flex-col gap-4 min-h-0 ${uiSwitching ? 'soft-fade' : ''}`}>
+            <div className={`flex flex-col gap-3 min-h-0 ${uiSwitching ? 'soft-fade' : ''}`}>
 
               {/* 上方：回撤图 (40%) */}
-              <div className="h-[38%] bg-white/60 backdrop-blur-xl border border-white/60 rounded-[24px] p-4 shadow-sm card-bloom relative flex flex-col">
-                <h3 className="text-xs font-bold text-[#8B4F58] mb-1.5 flex items-center gap-2">
+              <div className="h-[38%] bg-white/60 backdrop-blur-xl border border-white/60 rounded-[24px] p-3 shadow-sm card-bloom relative flex flex-col">
+                <h3 className="text-xs font-bold text-[#8B4F58] mb-1 flex items-center gap-2">
                   <Activity size={14} className="text-[#FF8FAB]" /> 回撤曲线
                   {(mainDdWindow?.hasDrawdown || subDdWindow?.hasDrawdown) && <span className="text-[9px] px-2 py-0.5 bg-[#FFF0F5] text-[#FF8FAB] rounded-full border border-[#FFC2D1]">高亮最大坑</span>}
                 </h3>
@@ -1227,8 +1211,8 @@ export default function Backtest({ onBack }) {
               </div>
 
               {/* 下方：资产走势 (60%) */}
-              <div className="flex-1 bg-white/60 backdrop-blur-xl border border-white/60 rounded-[24px] p-4 shadow-sm card-bloom relative flex flex-col min-h-0">
-                <div className="flex justify-between items-center mb-1.5">
+              <div className="flex-1 bg-white/60 backdrop-blur-xl border border-white/60 rounded-[24px] p-3 shadow-sm card-bloom relative flex flex-col min-h-0">
+                <div className="flex justify-between items-center mb-1">
                   <h3 className="text-xs font-bold text-[#8B4F58] flex items-center gap-2">
                     <TrendingUp size={14} className="text-[#FF8FAB]" /> 资产曲线
                     <span className="text-[9px] px-2 py-0.5 bg-white/60 text-[#C5A0A6] rounded-full border border-white/70">{scaleMode === 'log' ? '对数' : '线性'}</span>
