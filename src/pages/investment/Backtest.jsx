@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Area, ComposedChart, ReferenceArea, ReferenceLine
@@ -11,22 +11,30 @@ import {
   RotateCcw, Trash2
 } from 'lucide-react';
 
+/**
+ * ------------------------------------------------------------------
+ * 🎨 姐姐的调色盘 & 样式配置
+ * ------------------------------------------------------------------
+ */
 const THEME = {
   colors: {
-    primary: '#FF9AB8',
-    primarySoft: '#FFE1EC',
-    primaryGradient: 'linear-gradient(135deg, #FFD6E6 0%, #FF9AB8 60%, #FF7EA9 100%)',
-    secondary: '#A7C5EB',
-    secondarySoft: '#E3EDFF',
-    secondaryGradient: 'linear-gradient(135deg, #E3EDFF 0%, #A7C5EB 100%)',
-    textMain: '#7A3B4A',
-    textLight: '#B58A97',
-    bgGradient: 'linear-gradient(180deg, #FFF7FA 0%, #FFF1F6 100%)',
+    primary: '#FF8FAB',       // 细水长流粉
+    primarySoft: '#FFC2D1',
+    primaryGradient: 'linear-gradient(135deg, #FF99A8 0%, #FF5D7D 100%)',
+    secondary: '#89CFF0',     // 五等分蓝
+    secondarySoft: '#BAE1FF',
+    secondaryGradient: 'linear-gradient(135deg, #A7C5EB 0%, #6495ED 100%)',
+    textMain: '#8B4F58',      // 深粉褐（阅读舒适）
+    textLight: '#C5A0A6',     // 浅粉灰
+    bgGradient: 'linear-gradient(180deg, #FFF0F5 0%, #FFF5F7 100%)',
   }
 };
 
-const LOG_EPS = 0.01;
+const LOG_EPS = 0.01; // 对数坐标底数保护
 const DEFAULT_START_DATE = '2020-01-01';
+const RISK_FREE_RATE = 0.02;
+
+// 默认配置
 const DEFAULT_CONFIG_A = [
   { code: '001021', weight: 20 }, { code: '161119', weight: 20 },
   { code: '001512', weight: 20 }, { code: '008701', weight: 10 },
@@ -49,6 +57,7 @@ const RANGE_OPTIONS = [
   { key: 'since', label: '成立来', days: null },
 ];
 
+// 工具函数
 const MS_DAY = 24 * 60 * 60 * 1000;
 const parseDateUTC = (dateStr) => new Date(`${dateStr}T00:00:00Z`);
 const dateToTime = (dateStr) => parseDateUTC(dateStr).getTime();
@@ -67,13 +76,14 @@ const validateDate = (dateStr) => {
 
 const fmtMoney = (v) => `¥${Math.round(Number(v) || 0).toLocaleString()}`;
 
+// 智能格式化坐标轴
 const formatAssetTick = (v) => {
   const n = Number(v);
   if (!Number.isFinite(n)) return '';
   const abs = Math.abs(n);
   if (abs < 1000) return `${Math.round(n)}`;
   if (abs >= 10000) {
-    if (abs < 20000) return `${Math.round(n).toLocaleString()}`;
+    if (abs < 20000) return `${Math.round(n).toLocaleString()}`; // 1万到2万之间显示全数字，避免1.1万这种模糊
     const w = n / 10000;
     if (Math.abs(w) >= 100) return `${w.toFixed(0)}万`;
     return `${w.toFixed(1)}万`;
@@ -84,13 +94,16 @@ const formatAssetTick = (v) => {
 const formatPercentTick = (v) => {
   const n = Number(v);
   if (!Number.isFinite(n)) return '';
-  const x = Math.abs(n) < 1e-9 ? 0 : n;
+  const x = Math.abs(n) < 1e-9 ? 0 : n; // 避免 -0.00%
   const abs = Math.abs(x);
   if (abs >= 10) return `${x.toFixed(0)}%`;
   if (abs >= 1) return `${x.toFixed(1)}%`;
   return `${x.toFixed(2)}%`;
 };
 
+/**
+ * ✨ 背景氛围组件：呼吸的柔光气泡
+ */
 const BackgroundBlobs = () => (
   <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
     <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[60%] bg-[#FFDEE9] rounded-full mix-blend-multiply filter blur-[120px] opacity-60 animate-blob-breathe"></div>
@@ -99,6 +112,9 @@ const BackgroundBlobs = () => (
   </div>
 );
 
+/**
+ * 🔘 胶囊切换按钮组
+ */
 const ToggleGroup = ({ options, value, onChange }) => (
   <div className="bg-white/40 p-1 rounded-2xl flex border border-white/60 backdrop-blur-md">
     {options.map((opt) => {
@@ -109,8 +125,8 @@ const ToggleGroup = ({ options, value, onChange }) => (
           key={opt.value}
           disabled={disabled}
           onClick={() => { if (!disabled) onChange(opt.value); }}
-          className={`ripple-button flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] relative overflow-hidden group
-            ${disabled ? 'text-[#7A3B4A]/30 cursor-not-allowed opacity-60' : (active ? 'text-white shadow-lg transform scale-[1.03]' : 'text-[#7A3B4A]/60 hover:text-[#FF8596] hover:bg-white/40')}`}
+          className={`ripple-button flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-xl text-[11px] font-bold transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] relative overflow-hidden group
+            ${disabled ? 'text-[#8B4F58]/30 cursor-not-allowed opacity-60' : (active ? 'text-white shadow-lg transform scale-[1.03]' : 'text-[#8B4F58]/60 hover:text-[#FF8596] hover:bg-white/40')}`}
           style={{
             background: (!disabled && active) ? (opt.activeGradient || THEME.colors.primaryGradient) : 'transparent',
             boxShadow: (!disabled && active) ? '0 6px 16px rgba(255, 153, 168, 0.32)' : 'none'
@@ -124,8 +140,12 @@ const ToggleGroup = ({ options, value, onChange }) => (
   </div>
 );
 
+/**
+ * 📊 金融计算核心函数
+ */
 const calculateXIRR = (cashFlows) => {
   if (cashFlows.length < 2) return 0;
+  // 简化版 Newton-Raphson
   const xnpv = (rate, flows) => {
     const t0 = dateToTime(flows[0].date);
     return flows.reduce((acc, cf) => {
@@ -150,28 +170,34 @@ const calculateVolatility = (returns) => {
   return Math.sqrt(variance * 252) * 100;
 };
 
-const calculateSharpe = (returns, riskFree = 0.02) => {
+const calculateSharpe = (returns, riskFree = RISK_FREE_RATE) => {
   if (returns.length < 2) return 0;
   const avgReturn = returns.reduce((a, b) => a + b, 0) / returns.length * 252;
   const vol = calculateVolatility(returns) / 100;
   return vol > 0 ? (avgReturn - riskFree) / vol : 0;
 };
 
+// 计算最大回撤及区间
 const calcMaxDrawdownWindow = (curve) => {
   if (!curve || curve.length < 2) return null;
   let peakVal = curve[0].value, peakIdx = 0;
   let maxDd = 0, peakIdxAtMax = 0, troughIdxAtMax = 0;
+
   for (let i = 0; i < curve.length; i++) {
     const v = curve[i].value;
     if (v >= peakVal) { peakVal = v; peakIdx = i; }
     const dd = peakVal > 0 ? ((v - peakVal) / peakVal) * 100 : 0;
     if (dd < maxDd) { maxDd = dd; peakIdxAtMax = peakIdx; troughIdxAtMax = i; }
   }
+
+  // 修复：如果maxDd几乎为0（定投初期常见），认为无回撤
   if (Math.abs(maxDd) < 1e-10) {
     return { hasDrawdown: false, maxDd: 0, peakDate: curve[0].date, troughDate: curve[0].date, recoveryDate: curve[0].date, recoveryDays: 0 };
   }
+
   const peakDate = curve[peakIdxAtMax].date, troughDate = curve[troughIdxAtMax].date, peakLevel = curve[peakIdxAtMax].value;
   let recoveryDate = null, recoveryDays = null;
+
   for (let j = troughIdxAtMax + 1; j < curve.length; j++) {
     if (curve[j].value >= peakLevel) {
       recoveryDate = curve[j].date;
@@ -179,9 +205,13 @@ const calcMaxDrawdownWindow = (curve) => {
       break;
     }
   }
+
   return { hasDrawdown: true, maxDd, peakDate, troughDate, recoveryDate, recoveryDays };
 };
 
+/**
+ * ✨ 数字滚动动画 Hook
+ */
 const easeOutElastic = (t) => {
   const c4 = (2 * Math.PI) / 3;
   return t === 0 ? 0 : t === 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1;
@@ -196,15 +226,18 @@ const useTweenNumber = (target, duration = 680) => {
   useEffect(() => {
     const isNum = Number.isFinite(Number(target));
     if (!isNum) { setVal(target); lastTargetRef.current = target; return; }
+
     const to = Number(target);
     const from = Number.isFinite(Number(lastTargetRef.current)) ? Number(lastTargetRef.current) : fromRef.current;
     lastTargetRef.current = to;
+
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     const start = performance.now();
     fromRef.current = from;
+
     const step = (now) => {
       const p = Math.min(1, (now - start) / duration);
-      const e = easeOutElastic(p);
+      const e = easeOutElastic(p); // 弹性动画
       const cur = from + (to - from) * e;
       setVal(cur);
       if (p < 1) rafRef.current = requestAnimationFrame(step);
@@ -212,145 +245,8 @@ const useTweenNumber = (target, duration = 680) => {
     rafRef.current = requestAnimationFrame(step);
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [target, duration]);
+
   return val;
-};
-
-const lerpNumber = (a, b, t) => {
-  const aa = Number(a);
-  const bb = Number(b);
-  if (!Number.isFinite(aa) && !Number.isFinite(bb)) return null;
-  if (!Number.isFinite(aa)) return bb;
-  if (!Number.isFinite(bb)) return aa;
-  return aa + (bb - aa) * t;
-};
-
-const hexToRgb = (hex) => {
-  if (!hex) return null;
-  const clean = hex.replace('#', '').trim();
-  if (clean.length === 3) {
-    const r = parseInt(clean[0] + clean[0], 16);
-    const g = parseInt(clean[1] + clean[1], 16);
-    const b = parseInt(clean[2] + clean[2], 16);
-    return { r, g, b };
-  }
-  if (clean.length !== 6) return null;
-  const r = parseInt(clean.slice(0, 2), 16);
-  const g = parseInt(clean.slice(2, 4), 16);
-  const b = parseInt(clean.slice(4, 6), 16);
-  return { r, g, b };
-};
-
-const mixColor = (from, to, t) => {
-  const a = hexToRgb(from);
-  const b = hexToRgb(to);
-  if (!a || !b) return to || from || '#000000';
-  const r = Math.round(lerpNumber(a.r, b.r, t));
-  const g = Math.round(lerpNumber(a.g, b.g, t));
-  const b2 = Math.round(lerpNumber(a.b, b.b, t));
-  return `rgb(${r}, ${g}, ${b2})`;
-};
-
-const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-
-const safePct = (a, b) => {
-  if (a == null || b == null) return 0;
-  const aa = Number(a), bb = Number(b);
-  if (!Number.isFinite(aa) || !Number.isFinite(bb) || bb <= 0) return 0;
-  return ((aa - bb) / bb) * 100;
-};
-
-const getSeriesForMode = (mode) => {
-  if (mode === 'B') return { main: 'B', sub: 'A', showSub: false };
-  if (mode === 'A') return { main: 'A', sub: 'B', showSub: false };
-  return { main: 'A', sub: 'B', showSub: true };
-};
-
-const pickSeriesValues = (row, series) => {
-  if (!row) return { vPlot: null, vRaw: null, cPlot: null, cRaw: null, dd: null };
-  if (series === 'A') {
-    return {
-      vPlot: row.vMainPlot,
-      vRaw: row.vMainRaw,
-      cPlot: row.cMainPlot,
-      cRaw: row.cMainRaw,
-      dd: row.ddMain,
-    };
-  }
-  return {
-    vPlot: row.vSubPlot,
-    vRaw: row.vSubRaw,
-    cPlot: row.cSubPlot,
-    cRaw: row.cSubRaw,
-    dd: row.ddSub,
-  };
-};
-
-const lerpSeriesValues = (from, to, t) => ({
-  vPlot: lerpNumber(from?.vPlot, to?.vPlot, t),
-  vRaw: lerpNumber(from?.vRaw, to?.vRaw, t),
-  cPlot: lerpNumber(from?.cPlot, to?.cPlot, t),
-  cRaw: lerpNumber(from?.cRaw, to?.cRaw, t),
-  dd: lerpNumber(from?.dd, to?.dd, t),
-});
-
-const buildTweenData = (fromData, toData, t, fromSeries, toSeries) => {
-  if (!fromData?.length && !toData?.length) return [];
-  const mapFrom = new Map((fromData || []).map(r => [r.date, r]));
-  const mapTo = new Map((toData || []).map(r => [r.date, r]));
-  const dates = Array.from(new Set([...mapFrom.keys(), ...mapTo.keys()]))
-    .sort((a, b) => dateToTime(a) - dateToTime(b));
-
-  let lastFrom = null;
-  let lastTo = null;
-  const out = [];
-
-  dates.forEach(date => {
-    if (mapFrom.has(date)) lastFrom = mapFrom.get(date);
-    if (mapTo.has(date)) lastTo = mapTo.get(date);
-    if (!lastFrom && !lastTo) return;
-
-    const fromRow = lastFrom || lastTo;
-    const toRow = lastTo || lastFrom;
-
-    const fromMain = pickSeriesValues(fromRow, fromSeries.main);
-    const toMain = pickSeriesValues(toRow, toSeries.main);
-    let fromSub = pickSeriesValues(fromRow, fromSeries.sub);
-    let toSub = pickSeriesValues(toRow, toSeries.sub);
-
-    if (!fromSeries.showSub && toSeries.showSub) {
-      fromSub = { ...fromMain };
-    }
-    if (fromSeries.showSub && !toSeries.showSub) {
-      toSub = { ...toMain };
-    }
-
-    const main = lerpSeriesValues(fromMain, toMain, t);
-    const sub = lerpSeriesValues(fromSub, toSub, t);
-
-    out.push({
-      date,
-      vMainPlot: main.vPlot,
-      vSubPlot: sub.vPlot,
-      cMainPlot: main.cPlot,
-      cSubPlot: sub.cPlot,
-      vMainRaw: main.vRaw,
-      vSubRaw: sub.vRaw,
-      cMainRaw: main.cRaw,
-      cSubRaw: sub.cRaw,
-      ddMain: main.dd,
-      ddSub: sub.dd,
-    });
-  });
-
-  for (let i = 0; i < out.length; i++) {
-    const cur = out[i];
-    const prev = out[i - 1];
-    cur.idx = i;
-    cur.chgMain = i === 0 ? 0 : safePct(cur.vMainRaw, prev?.vMainRaw);
-    cur.chgSub = i === 0 ? 0 : safePct(cur.vSubRaw, prev?.vSubRaw);
-  }
-
-  return out;
 };
 
 const AnimatedValue = ({ value, formatter, duration = 680, className = "" }) => {
@@ -361,7 +257,12 @@ const AnimatedValue = ({ value, formatter, duration = 680, className = "" }) => 
   return <span className={className}>{out}</span>;
 };
 
+
+/**
+ * 🚀 主组件
+ */
 export default function Backtest({ onBack }) {
+  // --- 状态定义 ---
   const [fundsA, setFundsA] = useState(DEFAULT_CONFIG_A);
   const [fundsB, setFundsB] = useState(DEFAULT_CONFIG_B);
   const [params, setParams] = useState(() => {
@@ -370,6 +271,7 @@ export default function Backtest({ onBack }) {
       const saved = localStorage.getItem('backtestParams_daily_v1');
       const parsed = saved ? JSON.parse(saved) : null;
       const merged = { ...fallback, ...(parsed || {}) };
+      // 简单的数据迁移逻辑
       if (!parsed?.schemaVersion && merged.startDate === '2022-01-01') merged.startDate = DEFAULT_START_DATE;
       if (!merged.startDate || !validateDate(merged.startDate)) merged.startDate = DEFAULT_START_DATE;
       merged.schemaVersion = 2;
@@ -380,31 +282,28 @@ export default function Backtest({ onBack }) {
     try { const saved = localStorage.getItem('backtestRangeMode_v1'); return saved || 'since'; }
     catch { return 'since'; }
   });
-  const [activeTab, setActiveTab] = useState('A');
-  const [viewMode, setViewMode] = useState('compare');
+
+  const [activeTab, setActiveTab] = useState('A'); // 编辑哪个组合
+  const [viewMode, setViewMode] = useState('compare'); // 视图模式: compare, A, B
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState('');
   const [progressRatio, setProgressRatio] = useState(0);
   const [error, setError] = useState(null);
-  const [rawDataMap, setRawDataMap] = useState(null);
+  const [rawDataMap, setRawDataMap] = useState(null); // 原始基金数据缓存
   const [fundNames, setFundNames] = useState({});
-  const [strategyMode, setStrategyMode] = useState('daily');
-  const [metricMode, setMetricMode] = useState('value');
-  const [scaleMode, setScaleMode] = useState('linear');
 
-  // ✅ 更丝滑：残影层（ghost layer，残影层）
+  const [strategyMode, setStrategyMode] = useState('daily'); // 'daily' | 'lumpSum'
+  const [metricMode, setMetricMode] = useState('value'); // 'value' | 'return'
+  const [scaleMode, setScaleMode] = useState('linear'); // 'linear' | 'log'
+
+  // UI 动画过渡状态
   const [uiSwitching, setUiSwitching] = useState(false);
-  const [displayResults, setDisplayResults] = useState(null);
-  const [ghostResults, setGhostResults] = useState(null);
-  const displayResultsRef = useRef(null);
+  const [displayResults, setDisplayResults] = useState(null); // 用于展示的最终计算结果
   const switchTimerRef = useRef({ t1: null, t2: null });
+
+  // 吐司提示
   const [toast, setToast] = useState(null);
-  const [chartTab, setChartTab] = useState('value'); // value | drawdown
-  const [showSheet, setShowSheet] = useState(false); // mobile bottom sheet for holdings
   const toastTimerRef = useRef(null);
-  const chartTweenRef = useRef({ from: null, to: null, metaFrom: null, metaTo: null, raf: null });
-  const [chartTweenT, setChartTweenT] = useState(1);
-  const [chartTweenKey, setChartTweenKey] = useState(0);
 
   const showToast = (msg) => {
     setToast(msg);
@@ -413,44 +312,50 @@ export default function Backtest({ onBack }) {
   };
 
   useEffect(() => {
-    displayResultsRef.current = displayResults;
-  }, [displayResults]);
-
-  useEffect(() => {
     return () => {
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
       if (switchTimerRef.current.t1) clearTimeout(switchTimerRef.current.t1);
       if (switchTimerRef.current.t2) clearTimeout(switchTimerRef.current.t2);
-      if (chartTweenRef.current.raf) cancelAnimationFrame(chartTweenRef.current.raf);
     };
   }, []);
 
+  // --- 持久化 ---
   useEffect(() => { try { localStorage.setItem('backtestParams_daily_v1', JSON.stringify(params)); } catch { } }, [params]);
   useEffect(() => { try { localStorage.setItem('backtestRangeMode_v1', rangeMode); } catch { } }, [rangeMode]);
+
+  // 对数坐标下只能看净值，不能看收益率（可能有负数）
   useEffect(() => { if (metricMode !== 'value' && scaleMode === 'log') setScaleMode('linear'); }, [metricMode, scaleMode]);
 
-  // ✅ hover 的 qq 弹弹：把 scale / lift 合并进同一个 transform（否则会被 JS transform 覆盖）
-  const handleCardMouseEnter = (e) => {
+  // --- 3D 悬停效果逻辑 ---
+  const handleCardMouseMove = (e) => {
     const el = e.currentTarget;
-    el.dataset.hovering = '1';
-    el.classList.add('card-pop-in');
-    el.style.transform = 'translateY(-2px) scale(1.015)';
-    if (el.__popTimer) clearTimeout(el.__popTimer);
-    el.__popTimer = setTimeout(() => el.classList.remove('card-pop-in'), 520);
+    const rect = el.getBoundingClientRect();
+    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    const centerX = rect.width / 2, centerY = rect.height / 2;
+    // 旋转角度
+    const rotateX = ((y - centerY) / centerY) * -8; // 最大8度
+    const rotateY = ((x - centerX) / centerX) * 8;
+
+    el.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateZ(8px)`;
+    // 光照移动
+    el.style.setProperty('--mx', `${(x / rect.width) * 100}%`);
+    el.style.setProperty('--my', `${(y / rect.height) * 100}%`);
   };
 
   const handleCardMouseLeave = (e) => {
     const el = e.currentTarget;
-    el.dataset.hovering = '0';
-    el.style.transform = 'translateY(0) scale(1)';
+    el.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) translateZ(0px)';
+    el.style.removeProperty('--mx');
+    el.style.removeProperty('--my');
   };
 
-  const cardFXProps = { onMouseEnter: handleCardMouseEnter, onMouseLeave: handleCardMouseLeave };
+  const cardFXProps = { onMouseMove: handleCardMouseMove, onMouseLeave: handleCardMouseLeave };
 
-  // ✅ ripple：点到按钮内部元素也能触发
+  // --- 按钮波纹特效 ---
   useEffect(() => {
     const handleRipple = (e) => {
-      const button = e.target.closest?.('.ripple-button');
+      if (!e.target.classList.contains('ripple-button')) return;
+      const button = e.target.closest('.ripple-button');
       if (!button) return;
       const rect = button.getBoundingClientRect();
       const x = e.clientX - rect.left, y = e.clientY - rect.top;
@@ -465,19 +370,19 @@ export default function Backtest({ onBack }) {
     return () => document.removeEventListener('click', handleRipple);
   }, []);
 
+  // --- 业务逻辑 ---
+
   const handleResetDefaults = () => {
     setFundsA(DEFAULT_CONFIG_A); setFundsB(DEFAULT_CONFIG_B);
     setParams({ schemaVersion: 2, startDate: DEFAULT_START_DATE, initialCapital: 10000, dailyAmount: 40 });
     setRangeMode('since'); setActiveTab('A'); setViewMode('compare');
     setStrategyMode('daily'); setMetricMode('value'); setScaleMode('linear');
     setError(null); setRawDataMap(null); setFundNames({}); setProgressRatio(0);
-    setDisplayResults(null); setGhostResults(null);
     showToast('已恢复默认配置 💗');
   };
 
   const handleClearResults = () => {
-    setRawDataMap(null); setError(null); setProgressRatio(0);
-    setDisplayResults(null); setGhostResults(null);
+    setRawDataMap(null); setError(null); setProgressRatio(0); setDisplayResults(null);
     showToast('已清空回测结果 ✨');
   };
 
@@ -486,23 +391,31 @@ export default function Backtest({ onBack }) {
       const scriptId = `script-${code}`;
       const oldScript = document.getElementById(scriptId);
       if (oldScript) oldScript.remove();
+
       const script = document.createElement('script');
       script.id = scriptId;
       script.src = `https://fund.eastmoney.com/pingzhongdata/${code}.js?t=${new Date().getTime()}`;
+
       script.onload = () => {
         if (window.Data_netWorthTrend) {
           const rawData = window.Data_netWorthTrend;
           const name = window.fS_name || "未知基金";
+          // 天天基金的数据通常已经包含了除权除息（累计净值或者复权净值），
+          // 但这里我们简单处理：如果有 unitMoney (分红)，模拟复权
           let shareMultiplier = 1.0;
           const formatted = rawData.map(item => {
             const nav = Number(item.y);
             const date = tsToCNDateStr(item.x);
+            // 简单处理分红复权逻辑：假设分红立即再投资
             let dividend = 0;
             if (item.unitMoney && typeof item.unitMoney === 'string') {
               const match = item.unitMoney.match(/派现金(\d+(\.\d+)?)元/);
               if (match) dividend = parseFloat(match[1]);
             }
-            if (dividend > 0 && nav > 0) shareMultiplier *= (1 + dividend / nav);
+            if (dividend > 0 && nav > 0) {
+              // 当日份额增加倍数 = (净值+分红)/净值
+              shareMultiplier *= (1 + dividend / nav);
+            }
             return { date, nav: nav * shareMultiplier };
           });
           window.Data_netWorthTrend = undefined;
@@ -519,7 +432,9 @@ export default function Backtest({ onBack }) {
   const runBacktest = async () => {
     if (!validateDate(params.startDate)) return setError('日期格式不对哦~');
     setLoading(true); setError(null); setProgressRatio(0);
+
     const allCodes = new Set([...fundsA, ...fundsB].filter(f => f.code && validateFundCode(f.code)).map(f => f.code));
+
     try {
       const fetchedData = {}, fetchedNames = {}, codes = Array.from(allCodes);
       for (let i = 0; i < codes.length; i++) {
@@ -530,7 +445,7 @@ export default function Backtest({ onBack }) {
           fetchedData[codes[i]] = res.data;
           fetchedNames[codes[i]] = res.name;
         } catch (e) { console.warn(e); }
-        await new Promise(r => setTimeout(r, 200));
+        await new Promise(r => setTimeout(r, 200)); // 避免频繁请求
       }
       setRawDataMap(fetchedData);
       setFundNames(fetchedNames);
@@ -539,36 +454,18 @@ export default function Backtest({ onBack }) {
     finally { setLoading(false); setProgress(''); setProgressRatio(0); }
   };
 
-  // ✅ 统一起点：两个组合所有基金里“最晚成立（成立最短）”作为共同起点
-  const computeGlobalStartTime = (rawDataMap, fundsA, fundsB, startDate) => {
-    const startT = dateToTime(startDate);
-    if (!rawDataMap) return startT;
-
-    const all = [...(fundsA || []), ...(fundsB || [])]
-      .filter(f => f?.code && validateFundCode(f.code))
-      .map(f => f.code);
-
-    const uniq = Array.from(new Set(all));
-    let latestFirst = startT;
-
-    uniq.forEach(code => {
-      const arr = rawDataMap[code];
-      if (arr && arr.length > 0) {
-        const t0 = dateToTime(arr[0].date);
-        if (Number.isFinite(t0) && t0 > latestFirst) latestFirst = t0;
-      }
-    });
-
-    return latestFirst;
-  };
-
-  const calculatePortfolio = (portfolioConfig, rawDataMap, params, mode, rangeMode, globalStartTime) => {
+  /**
+   * 🌟 核心回测逻辑：对齐数据 -> 每日循环 -> 定投/再平衡 -> 生成曲线
+   */
+  const calculatePortfolio = (portfolioConfig, rawDataMap, params, mode, rangeMode) => {
     const validFunds = portfolioConfig.filter(f => rawDataMap[f.code]);
     if (validFunds.length === 0) return null;
     const validCodes = validFunds.map(f => f.code);
 
-    // ✅ 先用全局共同起点，再确保不早于本组合最晚成立
-    let maxMinTime = Math.max(dateToTime(params.startDate), Number.isFinite(globalStartTime) ? globalStartTime : -Infinity);
+    // 1. 确定统一的起始时间
+    // 规则：取（用户设定时间）和（所有基金成立时间中最晚的那个）两者中的较晚者
+    // 必须确保所有基金都已经成立，才能开始构建组合
+    let maxMinTime = dateToTime(params.startDate);
     validCodes.forEach(code => {
       const d = rawDataMap[code];
       if (d && d.length > 0) {
@@ -577,19 +474,23 @@ export default function Backtest({ onBack }) {
       }
     });
 
+    // 2. 数据对齐 (基于交易日)
     const dateSet = new Set();
     validCodes.forEach(c => rawDataMap[c].forEach(d => {
       if (dateToTime(d.date) >= maxMinTime) dateSet.add(d.date);
     }));
     const sortedDates = Array.from(dateSet).sort((a, b) => dateToTime(a) - dateToTime(b));
 
+    // 构建查找表
     const lookup = {};
     validCodes.forEach(c => {
       lookup[c] = {};
       rawDataMap[c].forEach(d => lookup[c][d.date] = d.nav);
     });
 
+    // 填充对齐数据（处理某基金某日可能停牌的情况，沿用上一日净值）
     const lastNavs = {};
+    // 初始化 lastNavs 为起始日之前的最近净值
     validCodes.forEach(c => {
       const arr = rawDataMap[c] || [];
       let bestTime = null, bestNav = undefined;
@@ -609,20 +510,26 @@ export default function Backtest({ onBack }) {
         if (lookup[c][date] !== undefined) lastNavs[c] = lookup[c][date];
         row[c] = lastNavs[c];
       });
+      // 只有当所有基金都有净值时才开始记录（严谨起见）
       if (validCodes.every(c => row[c] !== undefined)) alignedData.push(row);
     });
+
     if (alignedData.length < 2) return null;
 
+    // 3. 截取时间段（根据 Range Buttons）
     const endTime = dateToTime(alignedData[alignedData.length - 1].date);
     const opt = RANGE_OPTIONS.find(x => x.key === rangeMode) || RANGE_OPTIONS[RANGE_OPTIONS.length - 1];
     let effectiveStartTime = dateToTime(alignedData[0].date);
+
     if (opt.days) {
       const rangeStartTime = endTime - opt.days * MS_DAY;
       if (rangeStartTime > effectiveStartTime) effectiveStartTime = rangeStartTime;
     }
     const slicedData = alignedData.filter(r => dateToTime(r.date) >= effectiveStartTime);
+
     if (slicedData.length < 2) return null;
 
+    // 4. 逐日回测
     const cashFlows = [], curve = [], dailyReturns = [];
     let shares = {}, totalInvested = 0;
     validCodes.forEach(c => shares[c] = 0);
@@ -633,60 +540,87 @@ export default function Backtest({ onBack }) {
     const initialDate = slicedData[0].date;
     let lastMonth = parseDateUTC(initialDate).getUTCMonth();
 
+    // 梭哈模式：第一天买入
     if (mode === 'lumpSum') {
       const cap = Number(params.initialCapital || 0);
       if (cap > 0) {
         totalInvested += cap;
         cashFlows.push({ date: initialDate, amount: -cap });
-        validCodes.forEach(c => { const amt = cap * getW(c); shares[c] = amt / slicedData[0][c]; });
+        validCodes.forEach(c => {
+          const amt = cap * getW(c);
+          shares[c] = amt / slicedData[0][c];
+        });
       }
     }
 
+    // 定投模式：每日金额（最低40）
     const dailyAmt = mode === 'daily' ? Math.max(40, Number(params.dailyAmount || 0)) : 0;
-    let units = totalInvested > 0 ? totalInvested : 0;
-    let prevUnitNav = null, peakValue = 0;
+
+    // 初始化净值归一化所需变量
+    let units = totalInvested > 0 ? totalInvested : 0; // 模拟基金份额，用于算净值曲线
+    let prevUnitNav = null;
+    let peakValue = 0;
 
     slicedData.forEach((row, idx) => {
       const d = parseDateUTC(row.date), m = d.getUTCMonth();
+      // 再平衡判断：每月的第一个交易日（月份变化时）
       const isRebalanceDay = (m !== lastMonth) && idx > 0;
 
+      // 1. 计算当日交易前市值
       let currentTotalValue = 0;
       validCodes.forEach(c => currentTotalValue += shares[c] * row[c]);
 
       const unitNavBefore = units > 0 ? (currentTotalValue / units) : 1;
 
+      // 2. 每日定投操作 (仅定投模式)
       let dailyInjection = 0;
       if (mode === 'daily') {
         dailyInjection = dailyAmt;
         totalInvested += dailyInjection;
         cashFlows.push({ date: row.date, amount: -dailyInjection });
+        // 增加模拟份额
         units += dailyInjection / (unitNavBefore > 0 ? unitNavBefore : 1);
       }
 
-      // ✅ “梭哈也要月度再平衡”：这里保持对 daily / lumpSum 都生效
+      // 3. 交易操作：再平衡 OR 普通买入
       if (isRebalanceDay) {
+        // 再平衡：总资产（含今日定投）按比例重新分配
         const targetTotal = currentTotalValue + dailyInjection;
-        validCodes.forEach(c => { const targetAmount = targetTotal * getW(c); shares[c] = targetAmount / row[c]; });
+        validCodes.forEach(c => {
+          const targetAmount = targetTotal * getW(c);
+          shares[c] = targetAmount / row[c]; // 忽略费率
+        });
       } else {
+        // 非再平衡日：直接买入对应的份额 (仅定投)
         if (mode === 'daily' && dailyInjection > 0) {
-          validCodes.forEach(c => { const amt = dailyInjection * getW(c); shares[c] += amt / row[c]; });
+          validCodes.forEach(c => {
+            const amt = dailyInjection * getW(c);
+            shares[c] += amt / row[c];
+          });
         }
       }
 
+      // 4. 结算当日最终市值
       currentTotalValue = 0;
       validCodes.forEach(c => currentTotalValue += shares[c] * row[c]);
 
+      // 记录单位净值用于计算收益率
       const unitNav = units > 0 ? (currentTotalValue / units) : 1;
+
       if (idx > 0 && prevUnitNav != null && prevUnitNav > 0) {
         dailyReturns.push((unitNav - prevUnitNav) / prevUnitNav);
       }
       prevUnitNav = unitNav;
 
+      // 计算回撤
       if (currentTotalValue > peakValue) peakValue = currentTotalValue;
       const drawdown = peakValue > 0 ? ((currentTotalValue - peakValue) / peakValue) * 100 : 0;
 
       curve.push({
-        date: row.date, value: currentTotalValue, cost: totalInvested, unitNav,
+        date: row.date,
+        value: currentTotalValue,
+        cost: totalInvested,
+        unitNav,
         returnRate: totalInvested > 0 ? ((currentTotalValue - totalInvested) / totalInvested) * 100 : 0,
         drawdown
       });
@@ -694,6 +628,7 @@ export default function Backtest({ onBack }) {
       lastMonth = m;
     });
 
+    // 指标计算
     const finalVal = curve.length > 0 ? curve[curve.length - 1].value : 0;
     if (finalVal > 0) cashFlows.push({ date: curve[curve.length - 1].date, amount: finalVal });
 
@@ -703,14 +638,30 @@ export default function Backtest({ onBack }) {
     const totalReturn = totalInvested > 0 ? ((finalVal - totalInvested) / totalInvested) * 100 : 0;
     const irr = calculateXIRR(cashFlows);
 
-    return { curve, metrics: { totalReturn, maxDrawdown, irr, volatility, sharpe } };
+    const avgDaily = dailyReturns.length > 0 ? dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length : 0;
+    const annualReturn = avgDaily * 252;
+    const rfDaily = RISK_FREE_RATE / 252;
+    const downside = dailyReturns.map(r => Math.min(0, r - rfDaily));
+    const downsideVar = downside.length ? downside.reduce((a, b) => a + b * b, 0) / downside.length : 0;
+    const downsideDev = downsideVar > 0 ? Math.sqrt(downsideVar) * Math.sqrt(252) : 0;
+    const sortino = downsideDev > 0 ? (annualReturn - RISK_FREE_RATE) / downsideDev : 0;
+    const maxDdAbs = Math.abs(maxDrawdown) / 100;
+    const calmar = maxDdAbs > 0 ? annualReturn / maxDdAbs : 0;
+    const realReturn = (annualReturn - 0.5 * Math.pow(volatility / 100, 2)) * 100;
+
+    return { curve, metrics: { totalReturn, maxDrawdown, irr, volatility, sharpe, sortino, calmar, realReturn } };
   };
 
+  /**
+   * 📅 补全自然日 (Weekend Filling)
+   * 确保曲线在非交易日平行于X轴，不包含定投操作
+   */
   const fillCalendarDays = (series) => {
     if (!series || series.length === 0) return series;
     const map = new Map(series.map(r => [r.date, r]));
     const start = series[0].date, end = series[series.length - 1].date;
 
+    // 合并策略：如果当天没有数据，沿用上一天的数据（value, cost, vMain...），但date要是当天
     const mergePreferGood = (base, patch) => {
       const out = { ...base };
       Object.keys(patch || {}).forEach((k) => {
@@ -736,6 +687,7 @@ export default function Backtest({ onBack }) {
         last = merged;
         dense.push(merged);
       } else {
+        // 缺失日期（周末/节假日）：完全复制上一条数据，只改日期
         dense.push({ ...last, date: cur });
       }
       curT += MS_DAY;
@@ -743,22 +695,28 @@ export default function Backtest({ onBack }) {
     return dense;
   };
 
+  // --- 结果计算与合成 ---
   const computedResults = useMemo(() => {
     if (!rawDataMap) return null;
 
-    const globalStartTime = computeGlobalStartTime(rawDataMap, fundsA, fundsB, params.startDate);
+    const resA = calculatePortfolio(fundsA, rawDataMap, params, strategyMode, rangeMode);
+    const resB = calculatePortfolio(fundsB, rawDataMap, params, strategyMode, rangeMode);
 
-    const resA = calculatePortfolio(fundsA, rawDataMap, params, strategyMode, rangeMode, globalStartTime);
-    const resB = calculatePortfolio(fundsB, rawDataMap, params, strategyMode, rangeMode, globalStartTime);
     if (!resA && !resB) return null;
 
+    // 合并两个策略的曲线到同一个时间轴用于画图
     const mapA = new Map(), mapB = new Map();
     if (resA) resA.curve.forEach(d => mapA.set(d.date, d));
     if (resB) resB.curve.forEach(d => mapB.set(d.date, d));
 
-    let dates = Array.from(new Set([...mapA.keys(), ...mapB.keys()]));
+    let dates = [];
+    if (viewMode === 'compare') dates = Array.from(new Set([...mapA.keys(), ...mapB.keys()]));
+    else if (viewMode === 'A') dates = Array.from(mapA.keys());
+    else dates = Array.from(mapB.keys());
+
     dates.sort((a, b) => dateToTime(a) - dateToTime(b));
 
+    // 填充数据用于图表
     let lastA = null, lastB = null;
     const toFiniteOrNull = (x) => { const n = Number(x); return Number.isFinite(n) ? n : null; };
 
@@ -766,100 +724,91 @@ export default function Backtest({ onBack }) {
     dates.forEach(date => {
       if (mapA.has(date)) lastA = mapA.get(date);
       if (mapB.has(date)) lastB = mapB.get(date);
-      if (!lastA && !lastB) return;
+
+      if (viewMode === 'compare' && (!lastA || !lastB)) return; // 对比模式下等待两者都有数据
 
       const a = lastA, b = lastB;
+      let vMain, vSub, ddMain, ddSub, cMain, cSub;
 
-      const vMain = metricMode === 'value' ? a?.value : a?.returnRate;
-      const vSub = metricMode === 'value' ? b?.value : b?.returnRate;
-      const cMain = a?.cost; const cSub = b?.cost;
-      const ddMain = a?.drawdown; const ddSub = b?.drawdown;
-
-      const vMainRaw = toFiniteOrNull(vMain);
-      const vSubRaw = toFiniteOrNull(vSub);
-      const cMainRaw = toFiniteOrNull(cMain);
-      const cSubRaw = toFiniteOrNull(cSub);
-      const ddMainRaw = toFiniteOrNull(ddMain);
-      const ddSubRaw = toFiniteOrNull(ddSub);
-
-      // ✅ 对数坐标绘图保护：Plot 字段保证 >= LOG_EPS；Raw 字段保留真实值给 tooltip 用
-      let vMainPlot = vMainRaw, vSubPlot = vSubRaw, cMainPlot = cMainRaw, cSubPlot = cSubRaw;
-
-      if (metricMode === 'value' && scaleMode === 'log') {
-        if (vMainPlot != null) vMainPlot = Math.max(LOG_EPS, vMainPlot);
-        if (vSubPlot != null) vSubPlot = Math.max(LOG_EPS, vSubPlot);
-        if (cMainPlot != null) cMainPlot = Math.max(LOG_EPS, cMainPlot);
-        if (cSubPlot != null) cSubPlot = Math.max(LOG_EPS, cSubPlot);
+      // 根据视图模式选择主次数据
+      if (viewMode === 'compare') {
+        vMain = metricMode === 'value' ? a?.value : a?.returnRate;
+        vSub = metricMode === 'value' ? b?.value : b?.returnRate;
+        cMain = a?.cost; cSub = b?.cost;
+        ddMain = a?.drawdown; ddSub = b?.drawdown;
+      } else if (viewMode === 'A') {
+        vMain = metricMode === 'value' ? a?.value : a?.returnRate;
+        cMain = a?.cost; ddMain = a?.drawdown;
+      } else {
+        vMain = metricMode === 'value' ? b?.value : b?.returnRate;
+        cMain = b?.cost; ddMain = b?.drawdown;
       }
 
-      chartDataRaw.push({
-        date,
-        vMainRaw, vSubRaw, cMainRaw, cSubRaw,
-        vMainPlot, vSubPlot, cMainPlot, cSubPlot,
-        ddMain: ddMainRaw, ddSub: ddSubRaw
-      });
+      // 对数坐标保护
+      vMain = toFiniteOrNull(vMain); vSub = toFiniteOrNull(vSub);
+      cMain = toFiniteOrNull(cMain); cSub = toFiniteOrNull(cSub);
+      ddMain = toFiniteOrNull(ddMain); ddSub = toFiniteOrNull(ddSub);
+
+      if (scaleMode === 'log' && metricMode === 'value') {
+        if (vMain != null) vMain = Math.max(LOG_EPS, vMain);
+        if (vSub != null) vSub = Math.max(LOG_EPS, vSub);
+        if (cMain != null) cMain = Math.max(LOG_EPS, cMain);
+        if (cSub != null) cSub = Math.max(LOG_EPS, cSub);
+      }
+
+      chartDataRaw.push({ date, vMain, vSub, cMain, cSub, ddMain, ddSub });
     });
 
+    // 🌟 关键步骤：补全自然日，让曲线在非交易日变平
     const chartData = fillCalendarDays(chartDataRaw);
 
+    // 计算当日涨跌幅 (用于Tooltip)
     const pct = (a, b) => {
       if (a == null || b == null) return 0;
       const aa = Number(a), bb = Number(b);
       if (!Number.isFinite(aa) || !Number.isFinite(bb) || bb <= 0) return 0;
       return ((aa - bb) / bb) * 100;
     };
-
     for (let i = 0; i < chartData.length; i++) {
       const cur = chartData[i], prev = chartData[i - 1];
       cur.idx = i;
-      cur.chgMain = i === 0 ? 0 : pct(cur.vMainRaw, prev?.vMainRaw);
-      cur.chgSub = i === 0 ? 0 : pct(cur.vSubRaw, prev?.vSubRaw);
+      cur.chgMain = i === 0 ? 0 : pct(cur.vMain, prev?.vMain);
+      cur.chgSub = i === 0 ? 0 : pct(cur.vSub, prev?.vSub);
     }
 
+    // 计算Y轴Domain (线性模式下优化显示)
     let yDomainLinearValue = null;
     if (metricMode === 'value' && scaleMode === 'linear' && chartDataRaw.length > 0) {
       const vals = [];
       chartDataRaw.forEach(r => {
-        ['vMainRaw', 'vSubRaw', 'cMainRaw', 'cSubRaw'].forEach(k => {
+        ['vMain', 'vSub', 'cMain', 'cSub'].forEach(k => {
           const v = r?.[k];
           if (typeof v === 'number' && Number.isFinite(v)) vals.push(v);
         });
       });
       if (vals.length > 0) {
-        const min = Math.min(...vals), max = Math.max(...vals);
-        yDomainLinearValue = [Math.max(0, min), max];
+        let min = Math.min(...vals), max = Math.max(...vals);
+        const span = max - min;
+        let pad = span > 0 ? span * 0.015 : 1; // 1.5% padding
+        pad = Math.max(pad, 1);
+        // 最小值下限为0
+        yDomainLinearValue = [Math.max(0, min - pad), max + pad];
       }
     }
 
-    return { dataA: resA, dataB: resB, chartData, yDomainLinearValue, meta: { viewMode, metricMode, scaleMode, chartTab } };
-  }, [rawDataMap, params, fundsA, fundsB, strategyMode, viewMode, metricMode, scaleMode, rangeMode, chartTab]);
+    return { dataA: resA, dataB: resB, chartData, yDomainLinearValue };
+  }, [rawDataMap, params, fundsA, fundsB, strategyMode, viewMode, metricMode, scaleMode, rangeMode]);
 
-  // ✅ 更丝滑：不再“先清空再出现”，而是：新结果立刻上屏 + 旧结果做残影淡出
+  // 延迟更新UI以实现平滑切换
   useEffect(() => {
-    if (!computedResults) {
-      setDisplayResults(null);
-      setGhostResults(null);
-      setUiSwitching(false);
-      return;
-    }
-
-    const prev = displayResultsRef.current;
-    if (!prev) {
-      setDisplayResults(computedResults);
-      setGhostResults(null);
-      setUiSwitching(false);
-      return;
-    }
-
-    setGhostResults(prev);
-    setDisplayResults(computedResults);
+    if (!computedResults) { setDisplayResults(null); return; }
     setUiSwitching(true);
-
+    // 简单的淡出淡入逻辑
     if (switchTimerRef.current.t1) clearTimeout(switchTimerRef.current.t1);
     if (switchTimerRef.current.t2) clearTimeout(switchTimerRef.current.t2);
 
-    switchTimerRef.current.t1 = setTimeout(() => { setGhostResults(null); }, 520);
-    switchTimerRef.current.t2 = setTimeout(() => { setUiSwitching(false); }, 600);
+    switchTimerRef.current.t1 = setTimeout(() => { setDisplayResults(computedResults); }, 140);
+    switchTimerRef.current.t2 = setTimeout(() => { setUiSwitching(false); }, 320);
 
     return () => {
       if (switchTimerRef.current.t1) clearTimeout(switchTimerRef.current.t1);
@@ -867,54 +816,8 @@ export default function Backtest({ onBack }) {
     };
   }, [computedResults]);
 
-  useEffect(() => {
-    if (!computedResults) {
-      if (chartTweenRef.current.raf) cancelAnimationFrame(chartTweenRef.current.raf);
-      chartTweenRef.current.from = null;
-      chartTweenRef.current.to = null;
-      chartTweenRef.current.metaFrom = null;
-      chartTweenRef.current.metaTo = null;
-      setChartTweenT(1);
-      return;
-    }
-
-    const prev = displayResultsRef.current;
-    const fromData = prev?.chartData || computedResults.chartData;
-    const fromMeta = prev?.meta || computedResults.meta;
-
-    chartTweenRef.current.from = fromData;
-    chartTweenRef.current.to = computedResults.chartData;
-    chartTweenRef.current.metaFrom = fromMeta;
-    chartTweenRef.current.metaTo = computedResults.meta;
-    setChartTweenKey((k) => k + 1);
-
-    if (!prev) {
-      setChartTweenT(1);
-      return;
-    }
-
-    if (chartTweenRef.current.raf) cancelAnimationFrame(chartTweenRef.current.raf);
-
-    const duration = 680;
-    const start = performance.now();
-    const tick = (now) => {
-      const p = Math.min(1, (now - start) / duration);
-      setChartTweenT(easeInOutCubic(p));
-      if (p < 1) {
-        chartTweenRef.current.raf = requestAnimationFrame(tick);
-      }
-    };
-
-    setChartTweenT(0);
-    chartTweenRef.current.raf = requestAnimationFrame(tick);
-
-    return () => {
-      if (chartTweenRef.current.raf) cancelAnimationFrame(chartTweenRef.current.raf);
-    };
-  }, [computedResults]);
-
+  // --- 衍生数据准备 ---
   const results = displayResults;
-
   const ddWindows = useMemo(() => {
     if (!results) return null;
     return {
@@ -923,77 +826,43 @@ export default function Backtest({ onBack }) {
     };
   }, [results]);
 
-  const ddWindowsGhost = useMemo(() => {
-    if (!ghostResults) return null;
-    return {
-      A: ghostResults.dataA?.curve ? calcMaxDrawdownWindow(ghostResults.dataA.curve) : null,
-      B: ghostResults.dataB?.curve ? calcMaxDrawdownWindow(ghostResults.dataB.curve) : null,
-    };
-  }, [ghostResults]);
+  const mainDdWindow = useMemo(() => {
+    if (!ddWindows) return null;
+    return viewMode === 'B' ? ddWindows.B : ddWindows.A;
+  }, [ddWindows, viewMode]);
 
-  const getDdDomain = (chartData, mode) => {
-    if (!chartData?.length) return [-1, 0];
+  const subDdWindow = useMemo(() => {
+    if (!ddWindows) return null;
+    return viewMode === 'compare' ? ddWindows.B : null;
+  }, [ddWindows, viewMode]);
+
+  // 回撤图Y轴范围优化
+  const ddDomain = useMemo(() => {
+    if (!results?.chartData?.length) return [-1, 0];
     const vals = [];
-    chartData.forEach(r => {
-      if (mode !== 'B' && typeof r.ddMain === 'number') vals.push(r.ddMain);
-      if (mode !== 'A' && typeof r.ddSub === 'number') vals.push(r.ddSub);
+    results.chartData.forEach(r => {
+      if (typeof r.ddMain === 'number') vals.push(r.ddMain);
+      if (viewMode === 'compare' && typeof r.ddSub === 'number') vals.push(r.ddSub);
     });
     if (vals.length === 0) return [-1, 0];
     let min = Math.min(...vals, 0);
     if (!Number.isFinite(min)) min = -1;
+    // 至少显示到 -5%
     if (Math.abs(min) < 0.05) return [-1, 0];
     const pad = Math.max(0.2, Math.abs(min) * 0.08);
     return [Math.min(min - pad, -0.2), 0];
-  };
+  }, [results, viewMode]);
 
-  const colorForSeries = (seriesKey) => (seriesKey === 'A' ? THEME.colors.primary : THEME.colors.secondary);
-
-  const chartTween = useMemo(() => {
-    const fallbackData = results?.chartData || [];
-    const fallbackMode = results?.meta?.viewMode ?? viewMode;
-    const fallbackShowSub = fallbackMode === 'compare';
-
-    const ref = chartTweenRef.current;
-    const fromData = ref.from || fallbackData;
-    const toData = ref.to || fallbackData;
-    if (!fromData?.length || !toData?.length) {
-      return {
-        data: fallbackData,
-        mainColor: colorForSeries('A'),
-        subColor: colorForSeries('B'),
-        subOpacity: fallbackShowSub ? 1 : 0,
-        showSub: fallbackShowSub,
-      };
-    }
-
-    const fromMode = ref.metaFrom?.viewMode ?? viewMode;
-    const toMode = ref.metaTo?.viewMode ?? viewMode;
-    const fromSeries = getSeriesForMode(fromMode);
-    const toSeries = getSeriesForMode(toMode);
-
-    const data = buildTweenData(fromData, toData, chartTweenT, fromSeries, toSeries);
-    const mainColor = mixColor(colorForSeries(fromSeries.main), colorForSeries(toSeries.main), chartTweenT);
-    const subColor = mixColor(colorForSeries(fromSeries.sub), colorForSeries(toSeries.sub), chartTweenT);
-
-    const showSub = fromSeries.showSub || toSeries.showSub;
-    let subOpacity = showSub ? 1 : 0;
-    if (!fromSeries.showSub && toSeries.showSub) subOpacity = chartTweenT;
-    if (fromSeries.showSub && !toSeries.showSub) subOpacity = 1 - chartTweenT;
-
-    return { data, mainColor, subColor, subOpacity, showSub };
-  }, [chartTweenT, chartTweenKey, results, viewMode]);
-
-  const chartDataForRender = chartTween.data || results?.chartData || [];
-  const hasChartData = chartDataForRender.length > 0;
-
+  // 动态主题色
   const dynamicStyles = useMemo(() => {
     const mainColor = viewMode === 'B' ? THEME.colors.secondary : THEME.colors.primary;
     const subColor = THEME.colors.secondary;
     return { '--main-color': mainColor, '--sub-color': subColor };
   }, [viewMode]);
 
+  // --- 样式类 ---
   const glassCard = "relative overflow-hidden card-bloom backdrop-blur-xl rounded-[24px] border border-white/60 shadow-[0_8px_32px_rgba(255,182,193,0.10)] bg-white/60 hover:bg-white/70 transition-[transform,box-shadow,background-color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:shadow-[0_16px_64px_rgba(255,153,168,0.24)] active:scale-[0.995]";
-  const glassInput = "w-full bg-white/50 border border-white rounded-xl px-4 py-2 text-sm text-[#7A3B4A] outline-none focus:ring-2 focus:ring-[#FFE1EC] focus:bg-white transition-all shadow-inner";
+  const glassInput = "w-full bg-white/55 border border-white rounded-lg px-3 py-2 text-[13px] text-[#8B4F58] outline-none focus:ring-2 focus:ring-[#FFC2D1] focus:bg-white transition-all shadow-inner";
 
   const activeFunds = activeTab === 'A' ? fundsA : fundsB;
   const activeWeightSum = useMemo(() => {
@@ -1002,333 +871,53 @@ export default function Backtest({ onBack }) {
   }, [activeFunds]);
   const weightOk = Math.abs(activeWeightSum - 100) < 1e-6;
 
-  // ✅ Tooltip：对比模式下按“y 值从大到小”自动排序，谁更高谁在上面
-    const CustomValueTooltip = ({ active, payload, label, modeOverride }) => {
+  // --- 自定义Tooltip ---
+  const CustomValueTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
     const row = payload[0]?.payload || {};
-    const activeViewMode = modeOverride ?? viewMode;
-
     const showChg = (chg) => {
-      const n = Number(chg);
-      const v = Number.isFinite(n) ? n : 0;
+      const n = Number(chg), v = Number.isFinite(n) ? n : 0;
       const sign = v >= 0 ? "+" : "";
       return `${sign}${v.toFixed(2)}%`;
     };
-
-    const LineRow = ({ title, value, chg, color }) => {
-      const vv = Number.isFinite(Number(value)) ? Number(value) : 0;
-      return (
-        <div className="mt-2">
-          <div className="font-black text-sm" style={{ color }}>
-            {title}：{fmtMoney(vv)}
-          </div>
-          <div className="text-[11px] font-bold text-[#B58A97] mt-1">
-            当日涨跌：{showChg(chg)}
-          </div>
-        </div>
-      );
-    };
-
-    const isCompare = activeViewMode === "compare";
-    const isSingleA = activeViewMode === "A";
-    const isSingleB = activeViewMode === "B";
-
-    let items = [];
-    if (isCompare) {
-      items = [
-        { id: "A", title: "🌸 细水长流", value: row.vMainRaw, chg: row.chgMain, color: THEME.colors.primary },
-        { id: "B", title: "❄️ 五等分", value: row.vSubRaw, chg: row.chgSub, color: THEME.colors.secondary },
-      ];
-      items.sort((a, b) => (Number(b.value) || 0) - (Number(a.value) || 0));
-    }
-
+    const line = (title, value, chg, color) => (
+      <div className="mt-2">
+        <div className="font-black text-sm" style={{ color }}>{title}：{fmtMoney(value)}</div>
+        <div className="text-[11px] font-bold text-[#C5A0A6] mt-1">当日涨跌：{showChg(chg)}</div>
+      </div>
+    );
+    const isCompare = viewMode === "compare", isSingleA = viewMode === "A", isSingleB = viewMode === "B";
     return (
       <div className="px-4 py-3 rounded-2xl bg-white/92 backdrop-blur-xl border border-white/70 shadow-[0_14px_50px_rgba(255,143,171,0.20)]">
-        <div className="text-sm font-black text-[#7A3B4A] mb-1">{label}</div>
-
-        {isCompare && items.map(it => (
-          <LineRow key={it.id} title={it.title} value={it.value} chg={it.chg} color={it.color} />
-        ))}
-
-        {isSingleA && (
-          <LineRow title="🌸 细水长流" value={row.vMainRaw} chg={row.chgMain} color={THEME.colors.primary} />
-        )}
-
-        {isSingleB && (
-          <LineRow title="❄️ 五等分" value={row.vMainRaw} chg={row.chgMain} color={THEME.colors.secondary} />
-        )}
+        <div className="text-sm font-black text-[#8B4F58] mb-1">{label}</div>
+        {isCompare && (<>{line("🌸 细水长流", row.vMain, row.chgMain, THEME.colors.primary)}{line("❄️ 五等分", row.vSub, row.chgSub, THEME.colors.secondary)}</>)}
+        {isSingleA && line("🌸 细水长流", row.vMain, row.chgMain, THEME.colors.primary)}
+        {isSingleB && line("❄️ 五等分", row.vMain, row.chgMain, THEME.colors.secondary)}
       </div>
     );
   };
 
-  const CustomReturnTooltip = ({ active, payload, label, modeOverride }) => {
+  const CustomReturnTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
     const row = payload[0]?.payload || {};
-    const activeViewMode = modeOverride ?? viewMode;
-
     const show = (v) => {
-      const n = Number(v);
-      const x = Number.isFinite(n) ? n : 0;
+      const n = Number(v), x = Number.isFinite(n) ? n : 0;
       const sign = x >= 0 ? "+" : "";
       return `${sign}${x.toFixed(2)}%`;
     };
-
-    const isCompare = activeViewMode === "compare";
-    const isSingleA = activeViewMode === "A";
-    const isSingleB = activeViewMode === "B";
-
-    let items = [];
-    if (isCompare) {
-      items = [
-        { id: "A", title: "🌸 细水长流", value: row.vMainRaw, color: THEME.colors.primary },
-        { id: "B", title: "❄️ 五等分", value: row.vSubRaw, color: THEME.colors.secondary },
-      ];
-      items.sort((a, b) => (Number(b.value) || 0) - (Number(a.value) || 0));
-    }
-
+    const isCompare = viewMode === "compare", isSingleA = viewMode === "A", isSingleB = viewMode === "B";
     return (
       <div className="px-4 py-3 rounded-2xl bg-white/92 backdrop-blur-xl border border-white/70 shadow-[0_14px_50px_rgba(255,143,171,0.20)]">
-        <div className="text-sm font-black text-[#7A3B4A] mb-2">{label}</div>
-
-        {isCompare && items.map(it => (
-          <div key={it.id} className="font-black text-sm mt-2" style={{ color: it.color }}>
-            {it.title}：{show(it.value)}
-          </div>
-        ))}
-
-        {isSingleA && (
-          <div className="font-black text-sm" style={{ color: THEME.colors.primary }}>
-            🌸 细水长流：{show(row.vMainRaw)}
-          </div>
-        )}
-        {isSingleB && (
-          <div className="font-black text-sm" style={{ color: THEME.colors.secondary }}>
-            ❄️ 五等分：{show(row.vMainRaw)}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // 🌸 返回 { topCards, leftCards } 方便分开渲染
-  const renderMetricCards = (res, ddWins, isGhost = false, modeOverride) => {
-    if (!res) return { topCards: null, bottomCards: null };
-    const activeViewMode = modeOverride ?? viewMode;
-
-    const metrics = [
-      { label: '总资产', key: 'value', icon: DollarSign, fmt: v => fmtMoney(v), emoji: '💰' },
-      { label: '投入本金', key: 'cost', icon: Layers, fmt: v => fmtMoney(v), emoji: '💵' },
-      { label: '盈亏', key: 'profit', icon: ArrowUpRight, fmt: v => `${v >= 0 ? '+' : ''}${fmtMoney(v)}`, emoji: '📈' },
-      { label: '累计收益', key: 'totalReturn', icon: Percent, fmt: v => `${Number(v || 0).toFixed(2)}%`, emoji: '📊' },
-      { label: '年化IRR', key: 'irr', icon: Activity, fmt: v => `${Number(v || 0).toFixed(2)}%`, emoji: '🎯' },
-      { label: '波动率', key: 'volatility', icon: BarChart2, fmt: v => `${Number(v || 0).toFixed(2)}%`, emoji: '📉' },
-      { label: '最大回撤', key: 'maxDrawdown', icon: ShieldCheck, fmt: v => `${Number(v || 0).toFixed(2)}%`, emoji: '⚡' },
-      { label: '回撤恢复', key: 'recovery', icon: RotateCcw, fmt: v => (typeof v === 'number' ? `${v}天` : String(v)), emoji: '🔄' },
-      { label: '夏普比率', key: 'sharpe', icon: Scale, fmt: v => Number(v || 0).toFixed(3), emoji: '⭐' },
-    ];
-
-    const getVal = (r, which, m) => {
-      if (!r || !r.curve || r.curve.length === 0) return 0;
-      const last = r.curve.at(-1);
-      if (m.key === 'value') return last.value;
-      if (m.key === 'cost') return last.cost;
-      if (m.key === 'profit') return (last.value - last.cost);
-      if (m.key === 'recovery') {
-        const w = ddWins?.[which];
-        if (!w) return '-';
-        if (!w.hasDrawdown) return 0;
-        if (w.recoveryDays == null) return '未恢复';
-        return w.recoveryDays;
-      }
-      return r.metrics?.[m.key] ?? 0;
-    };
-
-    const makeCard = (m, i) => {
-      const valA = res.dataA ? getVal(res.dataA, 'A', m) : 0;
-      const valB = res.dataB ? getVal(res.dataB, 'B', m) : 0;
-
-      return (
-        <div
-          {...(!isGhost ? cardFXProps : {})}
-          key={i}
-          className="relative overflow-hidden card-bloom backdrop-blur-md rounded-[14px] border border-white/50 shadow-[0_3px_12px_rgba(255,182,193,0.15)] bg-gradient-to-br from-white/80 to-white/60 hover:from-white/90 hover:to-white/70 transition-all duration-400 ease-out hover:shadow-[0_6px_20px_rgba(255,153,168,0.25)] active:scale-[0.98] p-2.5 flex flex-col justify-between flex-1 min-h-0"
-        >
-          <div className="flex items-center gap-1.5 mb-1">
-            <span className="text-[11px]">{m.emoji}</span>
-            <span className="text-[10px] text-[#7A4A5B] font-semibold truncate">{m.label}</span>
-          </div>
-          <div className="flex flex-col gap-0.5 text-[10px]">
-            {(activeViewMode === 'A' || activeViewMode === 'compare') && (
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-[#B58A97] text-[9px]">🌸</span>
-                <span className="font-bold text-[13px] leading-none tabular-nums text-[#FF4FA3]">
-                  <AnimatedValue value={valA} formatter={m.fmt} />
-                </span>
-              </div>
-            )}
-            {(activeViewMode === 'B' || activeViewMode === 'compare') && (
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-[#B58A97] text-[9px]">❄️</span>
-                <span className="font-bold text-[13px] leading-none tabular-nums text-[#5A9BFF]">
-                  <AnimatedValue value={valB} formatter={m.fmt} />
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      );
-    };
-
-    // 顶部5张，左侧4张
-    const topCards = metrics.slice(0, 3).map((m, i) => makeCard(m, i));
-    const bottomCards = metrics.slice(3).map((m, i) => makeCard(m, i + 3));
-
-    return { topCards, bottomCards };
-  };
-
-  const renderChartLayer = (chartData, chartState, ddWins, kind = 'value') => {
-    if (!chartData?.length) return null;
-    const chartCurveType = (metricMode === 'value' || scaleMode === 'log') ? 'linear' : 'monotone';
-    const ddDomain = getDdDomain(chartData, chartState.showSub ? 'compare' : 'A');
-    const seriesMap = getSeriesForMode(viewMode);
-    const mainDdWindowLocal = ddWins?.[seriesMap.main];
-    const subDdWindowLocal = ddWins?.[seriesMap.sub];
-    const mainOpacity = 1;
-    const subOpacity = chartState.subOpacity ?? 0;
-    const getDisplayValueDomain = () => {
-      const vals = [];
-      chartData.forEach(r => {
-        ['vMainRaw', 'vSubRaw', 'cMainRaw', 'cSubRaw'].forEach(k => {
-          const v = r?.[k];
-          if (typeof v === 'number' && Number.isFinite(v)) vals.push(v);
-        });
-      });
-      if (vals.length === 0) return null;
-      const min = Math.min(...vals);
-      const max = Math.max(...vals);
-      return [Math.max(0, min), max];
-    };
-    const displayValueDomain = getDisplayValueDomain();
-
-    return (
-      <div className="absolute inset-0" style={{ '--main-color': chartState.mainColor, '--sub-color': chartState.subColor }}>
-        {kind === 'value' ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData}>
-              <defs>
-                <linearGradient id="gradMain-tween" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--main-color)" stopOpacity={0.35} className="stop-transition" />
-                  <stop offset="95%" stopColor="#FFF5F8" stopOpacity={0} className="stop-transition" />
-                </linearGradient>
-                <linearGradient id="gradSub-tween" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--sub-color)" stopOpacity={0.35} className="stop-transition" />
-                  <stop offset="95%" stopColor="#F4F7FF" stopOpacity={0} className="stop-transition" />
-                </linearGradient>
-              </defs>
-
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,182,193,0.26)" />
-              <XAxis dataKey="date" tickFormatter={t => t.slice(0, 7)} tick={{ fontSize: 10, fill: '#B58A97' }} axisLine={false} tickLine={false} dy={10} minTickGap={30} />
-              <YAxis
-                type="number"
-                tick={{ fontSize: 10, fill: '#B58A97' }}
-                axisLine={false}
-                tickLine={false}
-                scale={scaleMode}
-                domain={
-                  scaleMode === 'log'
-                    ? [LOG_EPS, 'dataMax']
-                    : (metricMode === 'value'
-                      ? (displayValueDomain || ['dataMin', 'dataMax'])
-                      : ['auto', 'auto'])
-                }
-                allowDataOverflow={scaleMode === 'log'}
-                tickFormatter={v => metricMode === 'value' ? formatAssetTick(v) : formatPercentTick(v)}
-              />
-
-              <Tooltip content={metricMode === 'value' ? <CustomValueTooltip /> : <CustomReturnTooltip />} cursor={{ stroke: "rgba(197,160,166,0.30)", strokeDasharray: "4 4" }} />
-
-              <Area
-                type={chartCurveType}
-                dataKey="vMainPlot"
-                stroke="var(--main-color)"
-                strokeWidth={3.2}
-                strokeOpacity={mainOpacity}
-                strokeLinecap="round"
-                fill="url(#gradMain-tween)"
-                fillOpacity={mainOpacity}
-                isAnimationActive={false}
-                className="transition-all-chart"
-                baseValue={scaleMode === 'log' ? LOG_EPS : 0}
-                activeDot={{ r: 4, strokeWidth: 2 }}
-              />
-
-              <Area
-                type={chartCurveType}
-                dataKey="vSubPlot"
-                stroke="var(--sub-color)"
-                strokeWidth={3.2}
-                strokeOpacity={subOpacity}
-                strokeLinecap="round"
-                fill="url(#gradSub-tween)"
-                fillOpacity={subOpacity}
-                isAnimationActive={false}
-                className="transition-all-chart"
-                baseValue={scaleMode === 'log' ? LOG_EPS : 0}
-                activeDot={{ r: 4, strokeWidth: 2 }}
-              />
-
-              {metricMode === 'value' && (
-                <>
-                  <Line
-                    type={chartCurveType}
-                    dataKey="cMainPlot"
-                    stroke="var(--main-color)"
-                    strokeWidth={2}
-                    dot={false}
-                    strokeDasharray="6 6"
-                    strokeOpacity={0.75 * mainOpacity}
-                    isAnimationActive={false}
-                    strokeLinecap="round"
-                  />
-                  <Line
-                    type={chartCurveType}
-                    dataKey="cSubPlot"
-                    stroke="var(--sub-color)"
-                    strokeWidth={2}
-                    dot={false}
-                    strokeDasharray="6 6"
-                    strokeOpacity={0.75 * subOpacity}
-                    isAnimationActive={false}
-                    strokeLinecap="round"
-                  />
-                </>
-              )}
-            </ComposedChart>
-          </ResponsiveContainer>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,182,193,0.26)" />
-              <XAxis dataKey="date" tick={false} axisLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: '#B58A97' }} axisLine={false} tickLine={false} width={52} domain={ddDomain} tickFormatter={formatPercentTick} tickCount={6} />
-              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', background: 'rgba(255,255,255,0.95)', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }} formatter={(v) => [`${Number(v).toFixed(2)}%`, '回撤']} />
-              <ReferenceLine y={0} stroke="rgba(255,182,193,0.28)" strokeDasharray="4 4" />
-              {mainDdWindowLocal?.hasDrawdown && (<ReferenceArea x1={mainDdWindowLocal.peakDate} x2={mainDdWindowLocal.troughDate} strokeOpacity={0} fill="var(--main-color)" fillOpacity={0.12} />)}
-              {chartState.showSub && subDdWindowLocal?.hasDrawdown && (<ReferenceArea x1={subDdWindowLocal.peakDate} x2={subDdWindowLocal.troughDate} strokeOpacity={0} fill="var(--sub-color)" fillOpacity={0.12} />)}
-              <Line type="step" dataKey="ddMain" stroke="var(--main-color)" strokeWidth={2} strokeOpacity={mainOpacity} dot={false} isAnimationActive={false} className="transition-all-chart" strokeLinecap="round" />
-              <Line type="step" dataKey="ddSub" stroke="var(--sub-color)" strokeWidth={2} strokeOpacity={subOpacity} dot={false} isAnimationActive={false} className="transition-all-chart" strokeLinecap="round" />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
+        <div className="text-sm font-black text-[#8B4F58] mb-2">{label}</div>
+        {isCompare && (<><div className="font-black text-sm" style={{ color: THEME.colors.primary }}>🌸 细水长流：{show(row.vMain)}</div><div className="font-black text-sm mt-2" style={{ color: THEME.colors.secondary }}>❄️ 五等分：{show(row.vSub)}</div></>)}
+        {isSingleA && (<div className="font-black text-sm" style={{ color: THEME.colors.primary }}>🌸 细水长流：{show(row.vMain)}</div>)}
+        {isSingleB && (<div className="font-black text-sm" style={{ color: THEME.colors.secondary }}>❄️ 五等分：{show(row.vMain)}</div>)}
       </div>
     );
   };
 
   return (
-    <div
-      className="min-h-screen lg:h-[100dvh] p-3 md:p-5 lg:p-6 font-sans selection:bg-[#FFE1EC] selection:text-[#7A3B4A] animate-fade-in-up"
-      style={{ background: THEME.colors.bgGradient, ...dynamicStyles }}
-    >
+    <div className="h-screen w-screen overflow-hidden flex font-sans selection:bg-[#FFC2D1] selection:text-[#8B4F58]" style={{ background: '#FFF0F5', ...dynamicStyles }}>
       <BackgroundBlobs />
       <div className="fixed inset-0 pointer-events-none z-[1] noise-overlay"></div>
       <div className="fixed inset-0 pointer-events-none z-[2] vignette"></div>
@@ -1339,523 +928,354 @@ export default function Backtest({ onBack }) {
         </div>
       )}
 
-      <div className="max-w-screen-2xl mx-auto relative z-10 h-full min-h-0 flex flex-col">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start h-full min-h-0">
-          <div className="lg:col-span-3 flex flex-col gap-4 h-full min-h-0">
-            <div {...cardFXProps} className={`${glassCard} p-4 flex flex-col gap-4`}>
-              <div className="flex items-center justify-between gap-3">
-                <button
-                  onClick={onBack}
-                  className="ripple-button inline-flex items-center gap-2 px-4 py-2 bg-white/65 backdrop-blur-md rounded-full shadow-sm text-[13px] font-bold text-[#7A3B4A] border border-white/70 hover:-translate-y-0.5 hover:shadow-md transition-transform duration-300"
-                  aria-label="返回主页"
-                >
-                  <ArrowLeft size={16} /> 返回主页
-                </button>
-                <span className="inline-flex items-center gap-2 px-3 py-1 bg-white/60 rounded-full border border-white/70 text-[11px] font-bold text-[#7A3B4A]">
-                  <span className="w-2 h-2 rounded-full" style={{ background: THEME.colors.primary }} />
-                  投资组合回测模型
-                </span>
-              </div>
-              <div className="space-y-2">
-                <h1 className="text-3xl md:text-4xl font-black tracking-tight leading-tight text-left drop-shadow-sm">
-                  <span className="bg-clip-text text-transparent" style={{ backgroundImage: THEME.colors.primaryGradient }}>双子星</span>
-                </h1>
-                <p className="text-xs font-medium text-[#B58A97] flex items-center gap-4">
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#FF9AB8]"></span> 细水长流</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#A7C5EB]"></span> 五等分</span>
-                </p>
+      {/* --- 左侧侧边栏 (360px) --- */}
+      <aside className="w-[360px] h-full flex flex-col border-r border-white/40 bg-white/20 backdrop-blur-xl z-20 relative shadow-[4px_0_24px_rgba(255,182,193,0.1)]">
+        {/* 顶部标题区 */}
+        <div className="p-2 pb-0">
+          <div className="flex items-center gap-2">
+            <button onClick={onBack} className="ripple-button flex items-center gap-2 px-3 py-1.5 bg-white/60 backdrop-blur-md rounded-full shadow-sm text-[#8B4F58] font-bold hover:bg-white hover:text-[#FF8FAB] transition-all text-[13px]">
+              <ArrowLeft size={14} /> 返回主页
+            </button>
+            <div className="flex-1 h-[1px] rounded-full bg-gradient-to-r from-[#FFD2DD] via-[#FFE7EE] to-transparent"></div>
+          </div>
+
+          <div className="flex items-start justify-between gap-3 mt-1">
+            <div>
+              <h1 className="relative text-[36px] font-black text-[#8B4F58] leading-none tracking-wide">
+                <span className="relative z-10">双子星</span>
+                <span className="absolute -bottom-1 left-0 h-2 w-[84px] rounded-full bg-[#FFB6C1]/45"></span>
+              </h1>
+              <div className="flex gap-2 mt-1 text-[10px] font-bold text-[#C5A0A6] tracking-tight">
+                <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-[#FF8FAB]"></span> 细水长流</span>
+                <span className="flex items-center gap-0.5"><span className="w-1.5 h-1.5 rounded-full bg-[#89CFF0]"></span> 五等分</span>
               </div>
             </div>
-            <div {...cardFXProps} className={`${glassCard} p-5`}>
-              <div className="flex items-center gap-2 mb-5">
-                <div className="p-1.5 bg-[#FFF0F5] rounded-lg text-[#FF9AB8]"><Calendar size={18} /></div>
-                <h2 className="font-bold text-[#7A3B4A]">回测设定</h2>
-              </div>
 
-              <div className="mb-4">
-                <label className="text-xs font-bold text-[#B58A97] ml-1 mb-2 block">回测区间</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {RANGE_OPTIONS.map(opt => {
-                    const active = rangeMode === opt.key;
-                    return (
-                      <button
-                        key={opt.key}
-                        onClick={() => setRangeMode(opt.key)}
-                        className={`ripple-button py-2 rounded-xl text-xs font-bold transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] border active:scale-[0.98]
-                          ${active ? 'text-white shadow-md border-white/70' : 'text-[#7A3B4A]/60 border-white/60 hover:bg-white/40'}`}
-                        style={{ background: active ? THEME.colors.primaryGradient : 'rgba(255,255,255,0.25)' }}
-                      >
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+            <div className="rounded-2xl bg-white/85 border border-[#FFD2DD] px-3.5 py-2 shadow-[0_6px_18px_rgba(255,182,193,0.18)] text-right">
+              <div className="text-[14px] font-black text-[#8B4F58] leading-tight">投资组合</div>
+              <div className="text-[14px] font-black text-[#8B4F58] leading-tight">回测模型</div>
+              <div className="mt-1 h-1 w-12 rounded-full bg-[#FFD2DD]/70 ml-auto"></div>
+            </div>
+          </div>
+        </div>
 
-              <div className="space-y-4">
+        {/* 滚动设置区 */}
+        <div className="flex-1 min-h-0 px-4 py-0.5 -mt-2 flex flex-col gap-1.5">
+          {/* 1. 回测设定 */}
+          <div className="bg-white/40 border border-white/50 rounded-2xl p-3 shadow-sm backdrop-blur-md card-bloom">
+            <div className="flex items-center gap-2 mb-2 text-[#8B4F58] font-bold text-[14px]">
+              <Calendar size={14} /> 回测设定
+            </div>
+
+            <div className="space-y-2">
+              <div>
+                <label className="text-[11px] font-bold text-[#C5A0A6] mb-1 block">开始日期</label>
+                <input type="date" value={params.startDate} onChange={e => setParams({ ...params, startDate: e.target.value })} className={glassInput} />
+              </div>
+              {strategyMode === 'lumpSum' ? (
                 <div>
-                  <label className="text-xs font-bold text-[#B58A97] ml-1 mb-1 block">开始日期</label>
-                  <input type="date" value={params.startDate} onChange={e => setParams({ ...params, startDate: e.target.value })} className={glassInput} />
+                  <label className="text-[11px] font-bold text-[#C5A0A6] mb-1 block">初始本金</label>
+                  <input type="number" value={params.initialCapital} onChange={e => setParams({ ...params, initialCapital: Number(e.target.value) })} className={glassInput} />
                 </div>
+              ) : (
+                <div>
+                  <label className="text-[11px] font-bold text-[#C5A0A6] mb-1 block">定投金额</label>
+                  <input type="number" step="0.01" value={params.dailyAmount} onChange={e => setParams({ ...params, dailyAmount: Number(e.target.value) })} className={glassInput} />
+                </div>
+              )}
+            </div>
+          </div>
 
-                {strategyMode === 'lumpSum' ? (
-                  <div>
-                    <label className="text-xs font-bold text-[#B58A97] ml-1 mb-1 block">初始本金 (梭哈)</label>
-                    <input type="number" value={params.initialCapital} onChange={e => setParams({ ...params, initialCapital: Number(e.target.value) })} className={glassInput} />
+          {/* 2. 基金配置 */}
+          <div className="bg-white/40 border border-white/50 rounded-2xl p-3 shadow-sm backdrop-blur-md card-bloom flex flex-col flex-1 min-h-0">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 text-[#8B4F58] font-bold text-[14px]">
+                <Layers size={14} /> 基金配置
+              </div>
+              <span className={`text-[11px] font-black px-2 py-0.5 rounded-full border ${weightOk ? 'bg-[#E0F7FA] text-[#00BCD4] border-[#B2EBF2]' : 'bg-[#FFEBEE] text-[#FF5252] border-[#FFCDD2]'}`}>
+                {activeWeightSum.toFixed(0)}%
+              </span>
+            </div>
+
+            <div className="flex bg-white/40 rounded-lg p-0.5 mb-2">
+              <button onClick={() => setActiveTab('A')} className={`flex-1 py-1.5 rounded-md text-[11px] font-bold transition-all ${activeTab === 'A' ? 'bg-[#FF8FAB] text-white shadow-sm' : 'text-[#C5A0A6]'}`}>细水长流</button>
+              <button onClick={() => setActiveTab('B')} className={`flex-1 py-1.5 rounded-md text-[11px] font-bold transition-all ${activeTab === 'B' ? 'bg-[#89CFF0] text-white shadow-sm' : 'text-[#C5A0A6]'}`}>五等分</button>
+            </div>
+
+            <div className="flex-1 min-h-0 flex flex-col">
+              <div className="grid flex-1 grid-cols-2 gap-2 auto-rows-[minmax(62px,1fr)]">
+                {activeFunds.map((fund, idx) => (
+                  <div key={idx} className="group relative bg-white/45 p-2 rounded-lg border border-white/50 hover:bg-white/70 transition-all">
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className="text-[11px] font-mono text-[#FFC2D1] w-4">{String(idx + 1).padStart(2, '0')}</span>
+                      <input value={fund.code} onChange={e => {
+                        const l = activeTab === 'A' ? [...fundsA] : [...fundsB]; l[idx].code = e.target.value; activeTab === 'A' ? setFundsA(l) : setFundsB(l);
+                      }} className="flex-1 bg-transparent text-[12px] font-bold text-[#8B4F58] outline-none min-w-0" placeholder="代码" />
+                      <div className="flex items-center gap-0.5">
+                        <input type="number" value={fund.weight} onChange={e => {
+                          const l = activeTab === 'A' ? [...fundsA] : [...fundsB]; l[idx].weight = Number(e.target.value); activeTab === 'A' ? setFundsA(l) : setFundsB(l);
+                        }} className="w-8 text-right bg-transparent text-[12px] font-bold text-[#8B4F58] outline-none" />
+                        <span className="text-[11px] text-[#C5A0A6]">%</span>
+                      </div>
+                    </div>
+                    <div className="h-1 w-full bg-white/50 rounded-full overflow-hidden mb-1">
+                      <div className={`h-full ${activeTab === 'A' ? 'bg-[#FF8FAB]' : 'bg-[#89CFF0]'}`} style={{ width: `${Math.min(fund.weight, 100)}%` }} />
+                    </div>
+                    <div className="text-[10px] text-[#C5A0A6] truncate">{fundNames[fund.code] || '未命名基金'}</div>
+                    <button onClick={() => {
+                      const l = activeTab === 'A' ? [...fundsA] : [...fundsB]; activeTab === 'A' ? setFundsA(l.filter((_, i) => i !== idx)) : setFundsB(l.filter((_, i) => i !== idx));
+                    }} className="absolute -top-1 -right-1 p-1 bg-white rounded-full text-[#FF5D7D] shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"><X size={10} /></button>
                   </div>
-                ) : (
-                  <div>
-                    <label className="text-xs font-bold text-[#B58A97] ml-1 mb-1 block">每日定投金额 (最低40，可小数)</label>
-                    <input type="number" step="0.01" value={params.dailyAmount} onChange={e => setParams({ ...params, dailyAmount: Number(e.target.value) })} className={glassInput} />
-                    <p className="text-[10px] text-[#FF9AB8] mt-1 ml-1">* 回测会自动按最低40执行；每月首个交易日无损再平衡；忽略限购和费率；非交易日不定投</p>
-                  </div>
-                )}
+                ))}
+              </div>
+              <button onClick={() => {
+                const l = activeTab === 'A' ? [...fundsA] : [...fundsB]; l.push({ code: '', weight: 0 }); activeTab === 'A' ? setFundsA(l) : setFundsB(l);
+              }} className="mt-2 w-full py-2 border border-dashed border-[#FFC2D1] rounded-lg text-[11px] font-bold text-[#FF8FAB] hover:bg-[#FFF0F5] transition-colors">+ 添加</button>
+            </div>
+          </div>
+        </div>
+
+        {/* 底部按钮区 */}
+        <div className="p-4 pt-2 space-y-2 bg-white/10 backdrop-blur-md">
+          <button onClick={runBacktest} disabled={loading} className="ripple-button w-full py-3 rounded-xl font-black text-white text-[15px] shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 group relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #FF8FAB 0%, #FFB6C1 100%)' }}>
+            {loading ? <Sparkles className="animate-spin" size={18} /> : <Play fill="currentColor" size={18} />}
+            <span className="z-10 relative">{loading ? progress : '开启回测之旅'}</span>
+            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
+          </button>
+          <div className="flex gap-2">
+            <button onClick={handleResetDefaults} className="flex-1 py-2 rounded-xl text-[10px] font-bold text-[#FF5D7D] bg-white/40 hover:bg-white border border-white/60 transition-all flex items-center justify-center gap-1">
+              <RotateCcw size={11} /> 恢复默认
+            </button>
+            <button onClick={handleClearResults} className="flex-1 py-2 rounded-xl text-[10px] font-bold text-[#8B4F58] bg-white/30 hover:bg-white border border-white/60 transition-all flex items-center justify-center gap-1">
+              <Trash2 size={11} /> 清空结果
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* --- 右侧内容区 --- */}
+      <main className="flex-1 flex flex-col min-w-0 relative z-10">
+
+        {/* 顶栏 */}
+        <header className="h-[64px] flex items-center px-6 bg-white/30 backdrop-blur-sm border-b border-white/40">
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* 回测区间 */}
+            <div className="flex items-center bg-white/50 p-1 rounded-xl shadow-inner">
+              <span className="px-2 text-[10px] font-bold text-[#C5A0A6]">区间</span>
+              <div className="flex gap-1">
+                {RANGE_OPTIONS.map(opt => {
+                  const active = rangeMode === opt.key;
+                  return (
+                    <button
+                      key={opt.key}
+                      onClick={() => setRangeMode(opt.key)}
+                      className={`ripple-button px-2 py-1 rounded-lg text-[10px] font-bold transition-all border ${active ? 'text-white border-white/70 shadow-sm' : 'text-[#8B4F58]/60 border-transparent hover:bg-white/40'}`}
+                      style={{ background: active ? THEME.colors.primaryGradient : 'rgba(255,255,255,0.25)' }}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div {...cardFXProps} className={`${glassCard} flex flex-col flex-1 min-h-0 overflow-hidden`}>
-              <div className="flex p-1 m-2 bg-white/50 rounded-xl">
-                <button
-                  onClick={() => setActiveTab('A')}
-                  className={`ripple-button flex-1 py-2 rounded-lg text-xs font-bold transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.98]
-                    ${activeTab === 'A' ? 'bg-[#FF9AB8] text-white shadow-md' : 'text-[#B58A97] hover:bg-white/50'}`}
-                >🌸 细水长流</button>
-                <button
-                  onClick={() => setActiveTab('B')}
-                  className={`ripple-button flex-1 py-2 rounded-lg text-xs font-bold transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.98]
-                    ${activeTab === 'B' ? 'bg-[#A7C5EB] text-white shadow-md' : 'text-[#B58A97] hover:bg-white/50'}`}
-                >❄️ 五等分</button>
-              </div>
-
-              <div className="px-4 pb-2">
-                <div className="bg-white/40 border border-white/60 rounded-xl px-3 py-2 backdrop-blur-md shadow-[inset_0_2px_4px_rgba(139,79,88,0.05)]">
-                  <span className="text-[10px] font-bold text-[#B58A97]">权重总和：</span>
-                  <span className={`text-[10px] font-black ${weightOk ? 'text-[#FF9AB8]' : 'text-[#FF7EA9]'}`}>{activeWeightSum.toFixed(2)}%</span>
-                  <span className="text-[10px] font-bold text-[#B58A97] ml-1">{weightOk ? '✅' : '⚠️ 建议=100%'}</span>
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto px-4 space-y-2 custom-scrollbar pb-4">
-                {activeFunds.map((fund, idx) => {
-                  const isValid = !fund.code || validateFundCode(fund.code);
-                  const name = fundNames[fund.code];
-                  return (
-                    <div
-                      key={idx}
-                      className="fund-item group flex flex-col gap-1 bg-white/30 p-2.5 rounded-xl border border-white/50 hover:bg-white/60 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] w-5 font-mono font-bold ${activeTab === 'A' ? 'text-[#FFE1EC]' : 'text-[#BAE1FF]'}`}>{String(idx + 1).padStart(2, '0')}</span>
-                        <input
-                          value={fund.code}
-                          onChange={e => {
-                            const newList = activeTab === 'A' ? [...fundsA] : [...fundsB];
-                            newList[idx].code = e.target.value;
-                            activeTab === 'A' ? setFundsA(newList) : setFundsB(newList);
-                          }}
-                          className={`w-16 bg-transparent text-sm font-bold text-[#7A3B4A] outline-none ${!isValid && 'text-red-400'}`}
-                          placeholder="000000"
-                        />
-                        <div className="flex-1">
-                          <div className="h-1.5 w-full bg-white/50 rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${activeTab === 'A' ? 'bg-[#FF9AB8]' : 'bg-[#A7C5EB]'}`} style={{ width: `${Math.min(fund.weight, 100)}%` }} />
-                          </div>
-                        </div>
-                        <input
-                          type="number"
-                          value={fund.weight}
-                          onChange={e => {
-                            const newList = activeTab === 'A' ? [...fundsA] : [...fundsB];
-                            newList[idx].weight = Number(e.target.value);
-                            activeTab === 'A' ? setFundsA(newList) : setFundsB(newList);
-                          }}
-                          className="w-10 bg-transparent text-xs font-bold text-right outline-none text-[#7A3B4A]"
-                        />
-                        <span className="text-[10px] text-[#B58A97]">%</span>
-                        <button
-                          onClick={() => {
-                            const newList = activeTab === 'A' ? [...fundsA] : [...fundsB];
-                            activeTab === 'A' ? setFundsA(newList.filter((_, i) => i !== idx)) : setFundsB(newList.filter((_, i) => i !== idx));
-                          }}
-                          className="opacity-0 group-hover:opacity-100 text-[#B58A97] hover:text-[#FF9AB8] transition-opacity duration-300"
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                      {name && <div className={`text-[10px] pl-7 truncate ${activeTab === 'A' ? 'text-[#FF9AB8]' : 'text-[#A7C5EB]'}`}>{name}</div>}
-                    </div>
-                  );
-                })}
-
-                <button
-                  onClick={() => {
-                    const newList = activeTab === 'A' ? [...fundsA] : [...fundsB];
-                    newList.push({ code: '', weight: 0 });
-                    activeTab === 'A' ? setFundsA(newList) : setFundsB(newList);
-                  }}
-                  className="ripple-button w-full py-2.5 border border-dashed border-[#FFE1EC] rounded-xl text-xs text-[#FF9AB8] hover:bg-[#FFF0F5] transition-colors duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] font-bold active:scale-[0.98]"
-                >+ 添加基金</button>
-              </div>
-
-              <div className="px-4 pt-3 pb-4 space-y-3 shrink-0 bg-white/30 border-t border-white/60">
-                <button
-                  onClick={runBacktest}
-                  disabled={loading}
-                  className="ripple-button w-full py-3 rounded-2xl font-bold text-white text-lg shadow-[0_10px_20px_rgba(255,154,184,0.3)] hover:shadow-[0_15px_30px_rgba(255,154,184,0.4)] transform hover:-translate-y-0.5 active:scale-95 transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] flex items-center justify-center gap-2 overflow-hidden relative group"
-                  style={{ background: 'linear-gradient(135deg, #FF9AB8 0%, #FFBED2 100%)' }}
-                >
-                  {loading ? <Sparkles className="animate-spin" /> : <Play fill="currentColor" size={20} />}
-                  <span className="relative z-10">{loading ? progress : '开启回测之旅'}</span>
-                  <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500 rounded-2xl"></div>
+            {/* View Modes */}
+            <div className="flex bg-white/50 p-1 rounded-xl shadow-inner">
+              {[
+                { id: 'compare', label: '对比', icon: GitCompare, color: '#BFAFB2' },
+                { id: 'A', label: '细水长流', icon: Flower, color: '#FF8FAB' },
+                { id: 'B', label: '五等分', icon: Snowflake, color: '#89CFF0' }
+              ].map(mode => (
+                <button key={mode.id} onClick={() => setViewMode(mode.id)} className={`px-3 py-1 rounded-lg text-[11px] font-bold flex items-center gap-2 transition-all ${viewMode === mode.id ? 'bg-white text-[#8B4F58] shadow-sm' : 'text-[#C5A0A6] hover:bg-white/30'}`}>
+                  <mode.icon size={11} color={viewMode === mode.id ? mode.color : 'currentColor'} /> {mode.label}
                 </button>
-
-                {loading && (
-                  <div className="w-full h-2 rounded-full bg-white/40 overflow-hidden border border-white/60 backdrop-blur-md">
-                    <div className="h-full rounded-full transition-all duration-500 progress-glow" style={{ width: `${Math.round(progressRatio * 100)}%`, background: 'linear-gradient(90deg, rgba(255,154,184,0.95), rgba(255,225,236,0.95), rgba(255,154,184,0.95))' }} />
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-2">
-                  <button onClick={handleResetDefaults} className="ripple-button py-3 rounded-2xl text-xs font-black text-[#FF7EA9] bg-white/60 border border-white/70 backdrop-blur-md hover:bg-white transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-sm flex items-center justify-center gap-2 active:scale-[0.98]">
-                    <RotateCcw size={14} /> 恢复默认
-                  </button>
-                  <button onClick={handleClearResults} className="ripple-button py-3 rounded-2xl text-xs font-black text-[#7A3B4A] bg-white/50 border border-white/70 backdrop-blur-md hover:bg-white transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-sm flex items-center justify-center gap-2 active:scale-[0.98]">
-                    <Trash2 size={14} /> 清空结果
-                  </button>
-                </div>
-              </div>
+              ))}
             </div>
-
-            <div className="md:hidden">
-              <button
-                onClick={() => setShowSheet(true)}
-                className="ripple-button w-full py-3 rounded-2xl font-bold text-[#7A3B4A] bg-white/70 border border-white/70 backdrop-blur-md shadow-sm hover:-translate-y-0.5 hover:shadow-md transition-all duration-300"
-              >
-                查看全部持仓/资产
-              </button>
+          
+            {/* Metric & Scale Toggles */}
+            <div className="flex items-center gap-3 bg-white/40 px-3 py-1 rounded-2xl border border-white/50 shadow-sm backdrop-blur-md">
+              <ToggleGroup value={metricMode} onChange={setMetricMode} options={[
+                { value: 'value', label: '资产', icon: DollarSign },
+                { value: 'return', label: '收益', icon: Percent }
+              ]} />
+              <div className="w-[1px] h-3 bg-[#C5A0A6]/30 mx-1"></div>
+              <ToggleGroup value={scaleMode} onChange={setScaleMode} options={[
+                { value: 'linear', label: '线性', icon: TrendingUp },
+                { value: 'log', label: '对数', icon: Zap, disabled: metricMode !== 'value' }
+              ]} />
+              <div className="w-[1px] h-3 bg-[#C5A0A6]/30 mx-1"></div>
+              <ToggleGroup value={strategyMode} onChange={setStrategyMode} options={[
+                { value: 'daily', label: '定投', icon: Layers },
+                { value: 'lumpSum', label: '梭哈', icon: ArrowUpRight }
+              ]} />
             </div>
-
           </div>
+        </header>
 
-          <div className="lg:col-span-9 flex flex-col gap-4 min-h-0 h-full">
-            {!results ? (
-              <div {...cardFXProps} className={`${glassCard} h-full min-h-[500px] flex flex-col items-center justify-center text-center p-10 border-dashed border-2 border-[#FFE1EC]`}>
-                <div className="relative mb-6">
-                  <div className="absolute inset-0 bg-[#FF9AB8] blur-3xl opacity-20 rounded-full animate-pulse"></div>
-                  <Flower size={48} className="text-[#FF9AB8] relative z-10 animate-bounce-slow" />
-                </div>
-                <h3 className="text-xl font-bold text-[#7A3B4A] mb-2">可以开启回测之旅啦~</h3>
-                {error && <div className="mt-4 px-4 py-2 bg-red-50 text-red-400 text-xs rounded-lg border border-red-100">{error}</div>}
-              </div>
-            ) : (
-              <>
-                <div {...cardFXProps} className={`${glassCard} p-3 flex flex-col md:flex-row items-center justify-between gap-4 sticky top-4 z-20 shrink-0`}>
-                  <div className="flex gap-1 bg-white/50 p-1 rounded-xl w-full md:w-auto overflow-x-auto">
-                    {[
-                      { id: 'compare', label: '对比', icon: GitCompare, color: '#BFAFB2' },
-                      { id: 'A', label: '细水长流', icon: Flower, color: '#FF9AB8' },
-                      { id: 'B', label: '五等分', icon: Snowflake, color: '#A7C5EB' }
-                    ].map(mode => (
-                      <button key={mode.id} onClick={() => setViewMode(mode.id)} className={`ripple-button px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-[0.98] ${viewMode === mode.id ? 'bg-white text-[#7A3B4A] shadow-sm' : 'text-[#B58A97] hover:bg-white/30'}`}>
-                        <mode.icon size={12} color={viewMode === mode.id ? mode.color : 'currentColor'} /> {mode.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-3 w-full md:w-auto flex-wrap justify-end">
-                    <ToggleGroup value={metricMode} onChange={setMetricMode} options={[
-                      { value: 'value', label: '资产', icon: DollarSign },
-                      { value: 'return', label: '收益', icon: Percent }
-                    ]} />
-                    <div className="w-[1px] bg-white/50 mx-1 hidden md:block"></div>
-                    <ToggleGroup value={scaleMode} onChange={setScaleMode} options={[
-                      { value: 'linear', label: '线性', icon: TrendingUp },
-                      { value: 'log', label: '对数', icon: Zap, disabled: metricMode !== 'value' }
-                    ]} />
-                    <div className="w-[1px] bg-white/50 mx-1 hidden md:block"></div>
-                    <ToggleGroup value={strategyMode} onChange={setStrategyMode} options={[
-                      { value: 'daily', label: '定投', icon: Layers },
-                      { value: 'lumpSum', label: '梭哈', icon: ArrowUpRight }
-                    ]} />
-                  </div>
-                </div>
-
-                <div className={`${uiSwitching ? "soft-fade " : ""}flex-1 min-h-0 min-w-0 flex flex-col gap-2`}>
-                  {/* 🌸 紧凑环绕布局：顶部5卡 + (左侧4卡 + 图表) */}
-                  {(() => {
-                    const { topCards, bottomCards } = renderMetricCards(results, ddWindows, false, viewMode);
-                    const ghost = ghostResults ? renderMetricCards(ghostResults, ddWindowsGhost, true, ghostResults.meta?.viewMode) : null;
-
-                    return (
-                      <>
-                        {/* 顶部一行：5张卡片紧凑排列 */}
-                        {/* 下方区域：左侧4卡 + 图表 */}
-                        <div className="flex-1 min-h-0 flex gap-2">
-                          {/* 左侧一列：4张卡片垂直排列，均分高度 */}
-                          <div className="w-[132px] shrink-0 h-full relative flex flex-col gap-2">
-                            <div className="relative flex-[1] min-h-0">
-                              {ghost?.topCards && (
-                                <div className="absolute inset-0 flex flex-col gap-1.5 h-full pointer-events-none ghost-out">
-                                  {ghost.topCards}
-                                </div>
-                              )}
-                              <div className={`relative flex flex-col gap-1.5 h-full ${uiSwitching ? 'ghost-in' : ''}`}>
-                                {topCards}
-                              </div>
-                            </div>
-                            <div className="relative flex-[2] min-h-0">
-                              {ghost?.bottomCards && (
-                                <div className="absolute inset-0 flex flex-col gap-1.5 h-full pointer-events-none ghost-out">
-                                  {ghost.bottomCards}
-                                </div>
-                              )}
-                              <div className={`relative flex flex-col gap-1.5 h-full ${uiSwitching ? 'ghost-in' : ''}`}>
-                                {bottomCards}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* 图表区域：充满剩余空间 */}
-                          <div className="flex-1 min-h-0 min-w-0 flex flex-col gap-3">
-                            <div {...cardFXProps} className={`${glassCard} flex-[1] p-3 flex flex-col gap-2 min-h-0 min-w-0 !overflow-visible`}>
-                              {!hasChartData ? (
-                                <div className="flex-1 min-h-[160px] rounded-2xl bg-white/50 border border-white/60 flex items-center justify-center text-sm font-semibold text-[#9A7381]">
-                                  暂无图表数据，请先运行回测
-                                </div>
-                              ) : (
-                                <>
-                                  <div className="flex items-center justify-between gap-3">
-                                    <span className="px-2 py-1 rounded-full bg-white/60 border border-white/70 text-[11px] font-bold text-[#7A3B4A]">回撤曲线</span>
-                                  </div>
-                                  <div className="relative flex-1 min-h-0">
-                                    {renderChartLayer(chartDataForRender, chartTween, ddWindows, 'drawdown')}
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                            <div {...cardFXProps} className={`${glassCard} flex-[2] p-3 flex flex-col gap-2 min-h-0 min-w-0 !overflow-visible`}>
-                              {!hasChartData ? (
-                                <div className="flex-1 min-h-[220px] rounded-2xl bg-white/50 border border-white/60 flex items-center justify-center text-sm font-semibold text-[#9A7381]">
-                                  暂无图表数据，请先运行回测
-                                </div>
-                              ) : (
-                                <>
-                                  <div className="flex items-center justify-between gap-3">
-                                    <span className="px-2 py-1 rounded-full bg-white/60 border border-white/70 text-[11px] font-bold text-[#7A3B4A]">
-                                      {metricMode === 'value' ? '资产曲线' : '收益曲线'}
-                                    </span>
-                                    <div className="flex items-center gap-2 text-[11px] font-bold text-[#B58A97]">
-                                      <span className="px-2 py-1 rounded-full bg-white/60 border border-white/70">{scaleMode === 'log' ? '对数坐标' : '线性坐标'}</span>
-                                      {metricMode === 'value' && (
-                                        <span className="px-2 py-1 rounded-full bg-white/60 border border-white/70 text-[#7A3B4A]">含成本线</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="relative flex-1 min-h-0">
-                                    {renderChartLayer(chartDataForRender, chartTween, ddWindows, 'value')}
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile bottom sheet for holdings */}
-      {showSheet && (
-        <div className="fixed inset-0 z-[120] flex items-end md:hidden">
-          <div
-            className="absolute inset-0 bg-black/30 backdrop-blur-[2px]"
-            onClick={() => setShowSheet(false)}
-            aria-label="关闭持仓面板"
-          ></div>
-          <div className="relative w-full bg-white rounded-t-3xl shadow-[0_-12px_40px_rgba(0,0,0,0.12)] max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-[#F5E9ED]">
-              <div className="h-1 w-12 bg-[#FFE1EC] rounded-full mx-auto"></div>
-              <button className="absolute right-4 top-3 text-[#B58A97]" onClick={() => setShowSheet(false)}>
-                <X size={18} />
-              </button>
+        {/* 内容网格 */}
+        {!results ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-10">
+            <div className="p-8 bg-white/40 backdrop-blur-xl rounded-[32px] border border-white/60 shadow-xl card-bloom animate-fade-in-up">
+              <Flower size={64} className="text-[#FF8FAB] mx-auto mb-4 animate-bounce-slow" />
+              <h2 className="text-2xl font-black text-[#8B4F58] mb-2">准备好开始了吗？</h2>
+              <p className="text-[#C5A0A6] font-medium">在左侧调整参数，点击“开启回测之旅”</p>
+              {error && <div className="mt-4 px-4 py-2 bg-red-50 text-red-400 text-xs rounded-lg border border-red-100 animate-pulse">{error}</div>}
             </div>
-            <div className="px-4 pb-4 pt-2 flex-1 overflow-y-auto custom-scrollbar space-y-3">
-              <div className="flex items-center gap-2 text-sm font-bold text-[#7A3B4A]">
-                <Layers size={16} /> 持仓列表
-              </div>
-              <div className="space-y-2">
-                {activeFunds.map((fund, idx) => {
-                  const isValid = !fund.code || validateFundCode(fund.code);
-                  const name = fundNames[fund.code];
-                  return (
-                    <div
-                      key={idx}
-                      className="fund-item group flex flex-col gap-1 bg-white/70 p-2.5 rounded-xl border border-[#F5E9ED] hover:bg-white transition-all duration-300"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] w-5 font-mono font-bold ${activeTab === 'A' ? 'text-[#FFE1EC]' : 'text-[#E3EDFF]'}`}>{String(idx + 1).padStart(2, '0')}</span>
-                        <input
-                          value={fund.code}
-                          onChange={e => {
-                            const newList = activeTab === 'A' ? [...fundsA] : [...fundsB];
-                            newList[idx].code = e.target.value;
-                            activeTab === 'A' ? setFundsA(newList) : setFundsB(newList);
-                          }}
-                          className={`w-16 bg-transparent text-sm font-bold text-[#7A3B4A] outline-none ${!isValid && 'text-red-400'}`}
-                          placeholder="000000"
-                        />
-                        <div className="flex-1">
-                          <div className="h-1.5 w-full bg-[#F7EEF2] rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${activeTab === 'A' ? 'bg-[#FF9AB8]' : 'bg-[#A7C5EB]'}`} style={{ width: `${Math.min(fund.weight, 100)}%` }} />
+          </div>
+        ) : (
+          <div className="flex-1 min-h-0 grid grid-cols-[200px_1fr] gap-4 p-4 overflow-hidden">
+            {/* 1. 中间指标列 */}
+            <div className={`space-y-2 ${uiSwitching ? 'soft-fade' : ''}`}>
+              {[
+                { label: '累计收益率', key: 'totalReturn', icon: Percent, fmt: v => `${Number(v || 0).toFixed(2)}%`, color: '#EB5757' },
+                { label: '真实收益率', key: 'realReturn', icon: Sparkles, fmt: v => `${Number(v || 0).toFixed(2)}%`, color: '#34C759' },
+                { label: '年化收益率', key: 'irr', icon: Activity, fmt: v => `${Number(v || 0).toFixed(2)}%`, color: '#BB6BD9' },
+                { label: '年化波动率', key: 'volatility', icon: BarChart2, fmt: v => `${Number(v || 0).toFixed(2)}%`, color: '#6FCF97' },
+                { label: '最大回撤', key: 'maxDrawdown', icon: ShieldCheck, fmt: v => `${Number(v || 0).toFixed(2)}%`, color: '#F2C94C' },
+                { label: '回撤修复', key: 'recovery', icon: RotateCcw, fmt: v => (typeof v === 'number' ? `${v}天` : String(v)), color: '#2F80ED' },
+                { label: '夏普比率', key: 'sharpe', icon: Scale, fmt: v => Number(v || 0).toFixed(3), color: '#F2C94C' },
+                { label: '卡玛比率', key: 'calmar', icon: ShieldCheck, fmt: v => Number(v || 0).toFixed(3), color: '#FF9F6B' },
+                { label: '索提诺比率', key: 'sortino', icon: Scale, fmt: v => Number(v || 0).toFixed(3), color: '#7C83FD' },
+              ].map((m, i) => {
+                const getVal = (res, which) => {
+                  if (!res || !res.curve || res.curve.length === 0) return 0;
+                  const last = res.curve.at(-1);
+                  if (m.key === 'value') return last.value;
+                  if (m.key === 'cost') return last.cost;
+                  if (m.key === 'profit') return (last.value - last.cost);
+                  if (m.key === 'recovery') {
+                    const w = ddWindows?.[which];
+                    if (!w) return '-';
+                    if (!w.hasDrawdown) return 0;
+                    if (w.recoveryDays == null) return '未修复';
+                    return w.recoveryDays;
+                  }
+                  return res.metrics?.[m.key] ?? 0;
+                };
+                const valA = results.dataA ? getVal(results.dataA, 'A') : 0;
+                const valB = results.dataB ? getVal(results.dataB, 'B') : 0;
+
+                return (
+                  <div key={i} className="metric-card relative overflow-hidden bg-white/70 backdrop-blur-xl border border-white/70 rounded-2xl p-2.5 shadow-[0_6px_20px_rgba(255,182,193,0.08)] hover:bg-white hover:scale-[1.02] transition-all duration-300 group">
+                    <div className="absolute inset-0 opacity-60" style={{ background: 'linear-gradient(135deg, rgba(255,143,171,0.10) 0%, rgba(137,207,240,0.10) 100%)' }} />
+                    <div className="absolute right-2 top-2 h-1.5 w-10 rounded-full opacity-60" style={{ background: m.color }} />
+                    <div className="relative">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <div className="p-1.5 rounded-lg text-white shadow-sm" style={{ backgroundColor: m.color }}>
+                            <m.icon size={11} />
                           </div>
+                          <span className="text-[9px] font-bold text-[#B58F96]">{m.label}</span>
                         </div>
-                        <input
-                          type="number"
-                          value={fund.weight}
-                          onChange={e => {
-                            const newList = activeTab === 'A' ? [...fundsA] : [...fundsB];
-                            newList[idx].weight = Number(e.target.value);
-                            activeTab === 'A' ? setFundsA(newList) : setFundsB(newList);
-                          }}
-                          className="w-12 bg-transparent text-xs font-bold text-right outline-none text-[#7A3B4A]"
-                        />
-                        <span className="text-[10px] text-[#B58A97]">%</span>
-                        <button
-                          onClick={() => {
-                            const newList = activeTab === 'A' ? [...fundsA] : [...fundsB];
-                            activeTab === 'A' ? setFundsA(newList.filter((_, i) => i !== idx)) : setFundsB(newList.filter((_, i) => i !== idx));
-                          }}
-                          className="opacity-70 text-[#B58A97] hover:text-[#FF9AB8] transition-opacity duration-200"
-                        >
-                          <X size={12} />
-                        </button>
+                        <span className="text-[9px] font-bold text-[#C5A0A6] bg-white/70 border border-white/80 px-1.5 py-0.5 rounded-full">#{String(i + 1).padStart(2, '0')}</span>
                       </div>
-                      {name && <div className={`text-[10px] pl-7 truncate ${activeTab === 'A' ? 'text-[#FF9AB8]' : 'text-[#A7C5EB]'}`}>{name}</div>}
+
+                      <div className="space-y-1">
+                        {(viewMode === 'A' || viewMode === 'compare') && (
+                          <div className="flex items-center justify-between">
+                            <span className="flex items-center gap-1 text-[9px] font-semibold text-[#C5A0A6]">
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ background: THEME.colors.primary }}></span>
+                              细水长流
+                            </span>
+                            <div className="text-[12px] font-black" style={{ color: THEME.colors.primary }}>
+                              <AnimatedValue value={valA} formatter={m.fmt} />
+                            </div>
+                          </div>
+                        )}
+                        {(viewMode === 'B' || viewMode === 'compare') && (
+                          <div className="flex items-center justify-between">
+                            <span className="flex items-center gap-1 text-[9px] font-semibold text-[#C5A0A6]">
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ background: THEME.colors.secondary }}></span>
+                              五等分
+                            </span>
+                            <div className="text-[12px] font-black" style={{ color: THEME.colors.secondary }}>
+                              <AnimatedValue value={valB} formatter={m.fmt} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  );
-                })}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 2. 右侧图表列 */}
+            <div className={`flex flex-col gap-4 min-h-0 ${uiSwitching ? 'soft-fade' : ''}`}>
+
+              {/* 上方：回撤图 (40%) */}
+              <div className="h-[38%] bg-white/60 backdrop-blur-xl border border-white/60 rounded-[24px] p-4 shadow-sm card-bloom relative flex flex-col">
+                <h3 className="text-xs font-bold text-[#8B4F58] mb-1.5 flex items-center gap-2">
+                  <Activity size={14} className="text-[#FF8FAB]" /> 回撤曲线
+                  {(mainDdWindow?.hasDrawdown || subDdWindow?.hasDrawdown) && <span className="text-[9px] px-2 py-0.5 bg-[#FFF0F5] text-[#FF8FAB] rounded-full border border-[#FFC2D1]">高亮最大坑</span>}
+                </h3>
+                <div className="flex-1 w-full min-h-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={results.chartData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,182,193,0.2)" />
+                      <XAxis dataKey="date" tick={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 9, fill: '#C5A0A6' }} axisLine={false} tickLine={false} width={40} domain={ddDomain} tickFormatter={formatPercentTick} tickCount={5} />
+                      <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.05)' }} formatter={(v) => [`${Number(v).toFixed(2)}%`, '回撤']} />
+                      <ReferenceLine y={0} stroke="rgba(255,182,193,0.35)" strokeDasharray="4 4" />
+                      {mainDdWindow?.hasDrawdown && <ReferenceArea x1={mainDdWindow.peakDate} x2={mainDdWindow.troughDate} strokeOpacity={0} fill="var(--main-color)" fillOpacity={0.10} />}
+                      {subDdWindow?.hasDrawdown && <ReferenceArea x1={subDdWindow.peakDate} x2={subDdWindow.troughDate} strokeOpacity={0} fill="var(--sub-color)" fillOpacity={0.10} />}
+                      <Line type="step" dataKey="ddMain" stroke="var(--main-color)" strokeWidth={2} dot={false} animationDuration={1000} strokeLinecap="round" />
+                      {viewMode === 'compare' && <Line type="step" dataKey="ddSub" stroke="var(--sub-color)" strokeWidth={2} dot={false} animationDuration={1000} strokeLinecap="round" />}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
-              <button
-                onClick={() => {
-                  const newList = activeTab === 'A' ? [...fundsA] : [...fundsB];
-                  newList.push({ code: '', weight: 0 });
-                  activeTab === 'A' ? setFundsA(newList) : setFundsB(newList);
-                }}
-                className="ripple-button w-full py-2.5 border border-dashed border-[#FFE1EC] rounded-xl text-xs text-[#FF9AB8] hover:bg-[#FFF5F9] transition-colors duration-300 font-bold active:scale-[0.98]"
-              >+ 添加基金</button>
+
+              {/* 下方：资产走势 (60%) */}
+              <div className="flex-1 bg-white/60 backdrop-blur-xl border border-white/60 rounded-[24px] p-4 shadow-sm card-bloom relative flex flex-col min-h-0">
+                <div className="flex justify-between items-center mb-1.5">
+                  <h3 className="text-xs font-bold text-[#8B4F58] flex items-center gap-2">
+                    <TrendingUp size={14} className="text-[#FF8FAB]" /> 资产曲线
+                    <span className="text-[9px] px-2 py-0.5 bg-white/60 text-[#C5A0A6] rounded-full border border-white/70">{scaleMode === 'log' ? '对数' : '线性'}</span>
+                  </h3>
+                  <div className="flex gap-2">
+                    {metricMode === 'value' && <div className="flex items-center gap-1 text-[9px] text-[#C5A0A6]"><span className="w-3 h-0.5 border-t border-dashed border-[#FFC2D1]"></span> 投入本金</div>}
+                  </div>
+                </div>
+                <div className="flex-1 w-full min-h-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={results.chartData}>
+                      <defs>
+                        <linearGradient id="gradMain" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--main-color)" stopOpacity={0.3} /><stop offset="95%" stopColor="#FFF0F5" stopOpacity={0} /></linearGradient>
+                        <linearGradient id="gradSub" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="var(--sub-color)" stopOpacity={0.3} /><stop offset="95%" stopColor="#F0F7FF" stopOpacity={0} /></linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,182,193,0.2)" />
+                      <XAxis dataKey="date" tickFormatter={t => t.slice(0, 7)} tick={{ fontSize: 9, fill: '#C5A0A6' }} axisLine={false} tickLine={false} dy={10} minTickGap={30} />
+                      <YAxis type="number" tick={{ fontSize: 9, fill: '#C5A0A6' }} axisLine={false} tickLine={false} scale={scaleMode} domain={scaleMode === 'log' ? [LOG_EPS, 'auto'] : (metricMode === 'value' && results.yDomainLinearValue ? results.yDomainLinearValue : ['auto', 'auto'])} allowDataOverflow={scaleMode === 'log'} tickFormatter={v => metricMode === 'value' ? formatAssetTick(v) : formatPercentTick(v)} width={45} />
+                      <Tooltip content={metricMode === 'value' ? <CustomValueTooltip /> : <CustomReturnTooltip />} cursor={{ stroke: "rgba(197,160,166,0.35)", strokeDasharray: "4 4" }} />
+                      <Area type={scaleMode === 'log' ? 'linear' : 'monotone'} dataKey="vMain" stroke="var(--main-color)" strokeWidth={3} fill="url(#gradMain)" animationDuration={1200} baseValue={scaleMode === 'log' ? LOG_EPS : 0} activeDot={{ r: 4, strokeWidth: 2 }} />
+                      {viewMode === 'compare' && <Area type={scaleMode === 'log' ? 'linear' : 'monotone'} dataKey="vSub" stroke="var(--sub-color)" strokeWidth={3} fill="url(#gradSub)" animationDuration={1200} baseValue={scaleMode === 'log' ? LOG_EPS : 0} activeDot={{ r: 4, strokeWidth: 2 }} />}
+                      {metricMode === 'value' && (<><Line type={scaleMode === 'log' ? 'linear' : 'monotone'} dataKey="cMain" stroke="var(--main-color)" strokeWidth={1.5} dot={false} strokeDasharray="6 6" strokeOpacity={0.6} animationDuration={900} /><Line type={scaleMode === 'log' ? 'linear' : 'monotone'} dataKey="cSub" stroke="var(--sub-color)" strokeWidth={1.5} dot={false} strokeDasharray="6 6" strokeOpacity={0.6} animationDuration={900} /></>)}
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </main>
 
       <style>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #FFE1EC; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #FFC2D1; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-
-        .transition-all-chart { transition: stroke 1s ease, fill 1s ease, stroke-opacity 1s ease, fill-opacity 1s ease; }
-        .stop-transition { transition: stop-color 1s ease; }
-
-        @keyframes blob-breathe {
-          0%, 100% { transform: translate(0px, 0px) scale(1); opacity: 0.6; }
-          33% { transform: translate(30px, -50px) scale(1.1); opacity: 0.7; }
-          66% { transform: translate(-20px, 20px) scale(0.9); opacity: 0.5; }
-        }
-        .animate-blob-breathe { animation: blob-breathe 18s infinite ease-in-out; }
-        .animate-bounce-slow { animation: bounce 4s infinite; }
-        .animate-fade-in-up { animation: fadeInUp 0.8s ease-out; }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-
-        @keyframes toast-bounce-in {
-          0% { opacity: 0; transform: translate(-50%, -20px) scale(0.9); }
-          50% { transform: translate(-50%, 5px) scale(1.02); }
-          100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
-        }
-        .toast-bounce { animation: toast-bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
-
-        .noise-overlay {
-          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.18'/%3E%3C/svg%3E");
-          opacity: 0.14; mix-blend-mode: soft-light;
-        }
-        .vignette {
-          background: radial-gradient(70% 60% at 50% 35%, rgba(255,255,255,0) 0%, rgba(255,143,171,0.08) 55%, rgba(139,79,88,0.10) 100%);
-          opacity: 0.9;
-        }
-
-        .card-bloom { transform-style: preserve-3d; will-change: transform; transition: transform 420ms cubic-bezier(0.16, 1, 0.3, 1); }
-        .card-bloom::before {
-          content: ""; position: absolute; inset: 0; border-radius: 26px;
-          background: radial-gradient(520px circle at var(--mx, 50%) var(--my, 30%), rgba(255,143,171,0.22), rgba(137,207,240,0.12) 28%, transparent 52%);
-          opacity: 0; transition: opacity 420ms ease; pointer-events: none; z-index: 0;
-        }
-        .card-bloom:hover::before { opacity: 1; }
-
-        .card-bloom::after {
-          content: ""; position: absolute; inset: 0; border-radius: 26px;
-          background: linear-gradient(115deg, transparent 0%, rgba(255,255,255,0.0) 35%, rgba(255,255,255,0.60) 50%, rgba(255,255,255,0.0) 65%, transparent 100%);
-          opacity: 0; transform: translateX(-60%); pointer-events: none; z-index: 0;
-        }
-        .card-bloom:hover::after { opacity: 0.70; animation: shimmerSweep 1.8s ease-in-out infinite; }
-        @keyframes shimmerSweep { 0% { transform: translateX(-60%); } 100% { transform: translateX(60%); } }
-
-        .card-pop-in { animation: cardPopIn 520ms cubic-bezier(0.16, 1, 0.3, 1); }
-        @keyframes cardPopIn {
-          0% { filter: saturate(1) brightness(1); }
-          35% { filter: saturate(1.06) brightness(1.03); }
-          70% { filter: saturate(1.02) brightness(1.01); }
-          100% { filter: saturate(1) brightness(1); }
-        }
-
-        .card-bloom > * { position: relative; z-index: 1; }
-
-        .ripple-effect {
-          position: absolute; border-radius: 50%; background: rgba(255,255,255,0.6);
-          width: 10px; height: 10px; transform: translate(-50%, -50%) scale(0); pointer-events: none;
-          animation: ripple-anim 0.6s ease-out; z-index: 0;
-        }
-        @keyframes ripple-anim { to { transform: translate(-50%, -50%) scale(12); opacity: 0; } }
-
-        .soft-fade { animation: softFade 320ms cubic-bezier(0.16, 1, 0.3, 1); }
-        @keyframes softFade {
-          0% { opacity: 0.78; filter: blur(1.0px); transform: translateY(2px); }
-          100% { opacity: 1; filter: blur(0); transform: translateY(0); }
-        }
-
-        .progress-glow { box-shadow: 0 0 12px rgba(255,143,171,0.6), 0 0 24px rgba(255,143,171,0.4); }
-
-        .fund-item { position: relative; overflow: hidden; }
-        .fund-item::before{
-          content:""; position:absolute; inset:-1px; border-radius: 14px;
-          background: radial-gradient(320px circle at 30% 20%, rgba(255,143,171,0.22), rgba(137,207,240,0.12) 35%, transparent 70%);
-          opacity: 0; transition: opacity 420ms ease; pointer-events:none;
-        }
-        .fund-item:hover::before{ opacity: 1; }
-        .fund-item:hover{
-          transform: translateY(-1px) scale(1.01);
-          box-shadow: 0 10px 26px rgba(255,143,171,0.18);
-          border-color: rgba(255, 194, 209, 0.85);
-        }
-
-        .ghost-out { animation: ghostFadeOut 520ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .ghost-in { animation: ghostFadeIn 520ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        @keyframes ghostFadeOut {
-          0% { opacity: 1; filter: blur(0px); transform: translateY(0px); }
-          100% { opacity: 0; filter: blur(1.2px); transform: translateY(1px); }
-        }
-        @keyframes ghostFadeIn {
-          0% { opacity: 0; filter: blur(1.2px); transform: translateY(1px); }
-          100% { opacity: 1; filter: blur(0px); transform: translateY(0px); }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .soft-fade, .card-bloom, .card-bloom::before, .card-bloom::after, .ripple-effect, .card-pop-in, .ghost-out, .ghost-in { animation: none !important; transition: none !important; }
-          .fund-item, .fund-item::before { transition: none !important; }
-        }
+        .card-bloom { transform-style: preserve-3d; will-change: transform; transition: all 0.3s ease; }
+        .card-bloom:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(255,182,193,0.2); }
+        .metric-card::before { content: ""; position: absolute; inset: 0; background: radial-gradient(120px 80px at 15% 10%, rgba(255,255,255,0.9), transparent 70%); opacity: 0.5; }
+        .metric-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0)); opacity: 0.35; }
+        .soft-fade { animation: softFade 0.4s ease-out; }
+        @keyframes softFade { from { opacity: 0.8; transform: translateY(4px); filter: blur(2px); } to { opacity: 1; transform: translateY(0); filter: blur(0); } }
+        .noise-overlay { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.08'/%3E%3C/svg%3E"); opacity: 0.4; mix-blend-mode: overlay; }
+        .vignette { background: radial-gradient(circle at center, transparent 0%, rgba(255,240,245,0.3) 100%); }
+        .ripple-button { position: relative; overflow: hidden; }
+        .ripple-button::after { content: ""; position: absolute; top: 50%; left: 50%; width: 5px; height: 5px; background: rgba(255,255,255,0.5); opacity: 0; border-radius: 100%; transform: scale(1, 1) translate(-50%); transform-origin: 50% 50%; }
+        @keyframes ripple { 0% { transform: scale(0, 0); opacity: 1; } 20% { transform: scale(25, 25); opacity: 1; } 100% { opacity: 0; transform: scale(40, 40); } }
+        .ripple-button:focus:not(:active)::after { animation: ripple 1s ease-out; }
       `}</style>
     </div>
   );
