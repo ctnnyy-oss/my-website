@@ -1,0 +1,75 @@
+﻿.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #FFC2D1; border-radius: 10px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+
+.transition-all-chart,
+.transition-all-chart path {
+  transition: stroke 0.6s ease, fill 0.6s ease, stroke-opacity 0.6s ease, fill-opacity 0.6s ease;
+}
+
+.card-bloom {
+  transition: box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1);
+  background-image:
+    radial-gradient(240px 160px at var(--mx, 20%) var(--my, 10%), rgba(255,255,255,0.65), transparent 60%),
+    radial-gradient(320px 220px at 85% 85%, rgba(255,143,171,0.10), transparent 60%);
+  background-repeat: no-repeat;
+}
+
+.card-bloom:hover {
+  box-shadow: 0 10px 30px rgba(255,182,193,0.2);
+}
+
+.metric-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120px 80px at 15% 10%, rgba(255,255,255,0.9), transparent 70%);
+  opacity: 0.5;
+}
+
+.metric-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0));
+  opacity: 0.35;
+}
+
+.noise-overlay {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.08'/%3E%3C/svg%3E");
+  opacity: 0.4;
+  mix-blend-mode: overlay;
+}
+
+.vignette {
+  background: radial-gradient(circle at center, transparent 0%, rgba(255,240,245,0.3) 100%);
+}
+
+.ripple-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple-button::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  background: rgba(255,255,255,0.5);
+  opacity: 0;
+  border-radius: 100%;
+  transform: scale(1, 1) translate(-50%);
+  transform-origin: 50% 50%;
+}
+
+@keyframes ripple {
+  0% { transform: scale(0, 0); opacity: 1; }
+  20% { transform: scale(25, 25); opacity: 1; }
+  100% { opacity: 0; transform: scale(40, 40); }
+}
+
+.ripple-button:focus:not(:active)::after {
+  animation: ripple 1s ease-out;
+}

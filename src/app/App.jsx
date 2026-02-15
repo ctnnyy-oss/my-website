@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 
 import Home from "../pages/home/Home";
-import Backtest from "../pages/investment/Backtest";
+import BacktestV2 from "../pages/investment/backtest-v2";
 import IllustrationsPage from "../pages/illustrations/IllustrationsPage";
 import AnimationsPage from "../pages/animations/AnimationsPage";
 import NovelsPage from "../pages/novels/NovelsPage";
@@ -28,21 +28,25 @@ export default function App() {
   };
 
   useEffect(() => {
-    // 允许用 URL 参数直接打开阅读器：/?file=Novels%2Fxxx.txt&title=...
     try {
       const params = new URLSearchParams(window.location.search);
+
+      if (params.get("bt") === "v2") {
+        setActivePage("investment-v2");
+        return;
+      }
+
       const file = params.get("file");
       if (file) {
         const title = params.get("title") || "阅读";
         openReader({ file, title, from: "novels" });
       }
     } catch {
-      // ignore
+      // ignore malformed query
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 阅读器（同一 SPA 内，不再需要单独 novel.html）
   if (activePage === "reader") {
     return (
       <ReaderPage
@@ -53,18 +57,15 @@ export default function App() {
     );
   }
 
-  // 漫画阅读器（长图滚动 + 懒加载）
   if (activePage === "comicReader") {
     return (
       <ComicsReaderPage
         title={comicPayload?.title}
-        // 新版：支持三种输入模式（manifest/pages/dir）
         mode={comicPayload?.mode}
         pages={comicPayload?.pages}
         manifest={comicPayload?.manifest}
         workId={comicPayload?.workId}
         chapter={comicPayload?.chapter}
-        // 兼容旧版：dir + count
         dir={comicPayload?.dir}
         count={comicPayload?.count}
         ext={comicPayload?.ext}
@@ -80,7 +81,11 @@ export default function App() {
   }
 
   if (activePage === "investment" || activePage === "backtest") {
-    return <Backtest onBack={goHome} />;
+    return <BacktestV2 onBack={goHome} />;
+  }
+
+  if (activePage === "investment-v2") {
+    return <BacktestV2 onBack={goHome} />;
   }
 
   if (activePage === "illustrations") {
@@ -107,7 +112,6 @@ export default function App() {
   if (activePage === "games") {
     return <GamesPage onBack={goHome} />;
   }
-
 
   return <Home onNavigate={setActivePage} />;
 }

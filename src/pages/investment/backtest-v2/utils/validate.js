@@ -1,4 +1,4 @@
-import { dateToTime } from "./date.js";
+﻿import { dateToTime } from "./date";
 
 export const validateFundCode = (code) => /^\d{6}$/.test(String(code || "").trim());
 

@@ -1,4 +1,4 @@
-export const fmtMoney = (v) => `¥${Math.round(Number(v) || 0).toLocaleString()}`;
+﻿export const fmtMoney = (v) => `¥${Math.round(Number(v) || 0).toLocaleString()}`;
 
 export const formatAssetTick = (v) => {
   const n = Number(v);
@@ -14,12 +14,20 @@ export const formatAssetTick = (v) => {
   return `${(n / 1000).toFixed(0)}k`;
 };
 
+export const formatAssetTickPrecise = (v) => {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "";
+  const rounded = Math.round(n);
+  const normalized = Object.is(rounded, -0) ? 0 : rounded;
+  return normalized.toLocaleString();
+};
+
 export const formatPercentTick = (v) => {
   const n = Number(v);
   if (!Number.isFinite(n)) return "";
-  const abs = Math.abs(n);
-  if (abs >= 1000) return `${n.toFixed(0)}%`;
-  if (abs >= 100) return `${n.toFixed(1)}%`;
-  if (abs >= 10) return `${n.toFixed(2)}%`;
-  return `${n.toFixed(2)}%`;
+  const x = Math.abs(n) < 1e-9 ? 0 : n;
+  const abs = Math.abs(x);
+  if (abs >= 10) return `${x.toFixed(0)}%`;
+  if (abs >= 1) return `${x.toFixed(1)}%`;
+  return `${x.toFixed(2)}%`;
 };
