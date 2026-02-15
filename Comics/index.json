@@ -1,0 +1,19 @@
+[
+  {
+    "id": "c001",
+    "title": "示例：日常四格 001",
+    "desc": "如果你没有外链（link，链接），可以删掉 link 字段。",
+    "cover": "Comics/data/c001/cover.png",
+    "comic": {
+      "dir": "Comics/data/c001/yuri",
+      "count": 46,
+      "ext": "webp",
+      "pad": 5,
+      "start": 1
+    },
+    "tags": [
+      "四格",
+      "日常"
+    ]
+  }
+]
