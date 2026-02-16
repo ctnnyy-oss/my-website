@@ -944,6 +944,16 @@ useEffect(() => {
     );
   };
 
+  const resetMobileTap = () => {
+    mobileTapRef.current = {
+      active: false,
+      moved: false,
+      x: 0,
+      y: 0,
+      t: 0,
+    };
+  };
+
   const handleMobileTouchStart = (e) => {
     if (!isMobileViewport || drawerOpen || mobileOverlayOpen) return;
     const touch = e.touches?.[0];
@@ -970,17 +980,19 @@ useEffect(() => {
   const handleMobileTouchEnd = (e) => {
     if (!isMobileViewport || drawerOpen) return;
     const tap = mobileTapRef.current;
-    mobileTapRef.current.active = false;
-    if (!tap.active) return;
-    if (tap.moved) return;
-    if (Date.now() - tap.t > 320) return;
+    const wasActive = tap.active;
+    const wasMoved = tap.moved;
+    const startTs = tap.t;
+    const isPureTap = wasActive && !wasMoved && Date.now() - startTs <= 320;
+    resetMobileTap();
+    if (!isPureTap) return;
     if (isInteractiveTarget(e.target)) return;
     if (mobileOverlayOpen) closeMobileOverlay();
     else openMobileOverlay();
   };
 
   const handleMobileTouchCancel = () => {
-    mobileTapRef.current.active = false;
+    resetMobileTap();
   };
 
   // ========= 渲染：块 =========
