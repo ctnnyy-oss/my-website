@@ -54,24 +54,24 @@
   position: absolute;
   inset: 0;
   border: 0;
-  background: rgba(255, 240, 247, 0.24);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 240, 247, 0.22);
+  backdrop-filter: blur(6px);
 }
 
 .reader-mobile-overlay-sidebar {
   position: absolute;
-  left: 12px;
-  top: 12px;
-  bottom: 192px;
-  width: min(78vw, 320px);
+  left: 10px;
+  top: 10px;
+  bottom: 180px;
+  width: min(66vw, 270px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: 20px;
+  border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.75);
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.58);
   box-shadow: 0 14px 44px rgba(255, 163, 190, 0.16);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(18px);
   animation: readerMobileOverlayIn 200ms ease-out both;
 }
 
@@ -97,14 +97,14 @@
 
 .reader-mobile-overlay-tools {
   position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
-  border-radius: 20px;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.75);
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.6);
   box-shadow: 0 14px 44px rgba(255, 163, 190, 0.16);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(18px);
   padding: 10px;
   display: flex;
   flex-direction: column;
@@ -140,6 +140,29 @@
   background: rgba(255, 255, 255, 0.62);
   box-shadow: 0 8px 24px rgba(255, 163, 190, 0.2);
   backdrop-filter: blur(10px);
+}
+
+/* 夜间模式 overlay */
+.reader-mobile-overlay-scrim[data-night="true"] {
+  background: rgba(18, 14, 16, 0.36);
+}
+.reader-mobile-overlay-sidebar[data-night="true"] {
+  background: rgba(30, 24, 28, 0.82);
+  border-color: rgba(255, 170, 200, 0.12);
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.3);
+}
+.reader-mobile-overlay-sidebar[data-night="true"] .reader-mobile-overlay-header {
+  border-bottom-color: rgba(255, 170, 200, 0.1);
+}
+.reader-mobile-overlay-tools[data-night="true"] {
+  background: rgba(30, 24, 28, 0.85);
+  border-color: rgba(255, 170, 200, 0.12);
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.3);
+}
+.reader-mobile-overlay-hint[data-night="true"] {
+  background: rgba(30, 24, 28, 0.8);
+  border-color: rgba(255, 170, 200, 0.15);
+  color: rgba(248, 233, 238, 0.85);
 }
 
 @keyframes readerMobileOverlayIn {
@@ -337,8 +360,8 @@
   }
 
   .reader-mobile-overlay-sidebar {
-    width: calc(100vw - 24px);
-    bottom: 210px;
+    width: min(68vw, 280px);
+    bottom: 200px;
   }
 
   .reader-book-viewport {

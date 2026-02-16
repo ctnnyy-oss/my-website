@@ -1072,7 +1072,13 @@ useEffect(() => {
         }}
       />
 
-      <div className={`relative z-10 ${infoMode ? 'flex' : ''}`}>
+      <div
+        className={`relative z-10 ${infoMode ? 'flex' : ''}`}
+        onTouchStart={handleMobileTouchStart}
+        onTouchMove={handleMobileTouchMove}
+        onTouchEnd={handleMobileTouchEnd}
+        onTouchCancel={handleMobileTouchCancel}
+      >
         {/* 信息面板（封面 + 简介 + 永久目录） */}
         {infoMode ? (
           <aside
@@ -1177,7 +1183,7 @@ useEffect(() => {
 
         <div className={`${infoMode ? "flex-1 min-w-0 lg:overflow-y-auto lg:h-screen" : ""} px-4 md:px-6 lg:px-8 py-4 md:py-6`}>
         {isMobileViewport && mobileHintVisible && !mobileOverlayOpen ? (
-          <div className="reader-mobile-overlay-hint md:hidden">
+          <div className="reader-mobile-overlay-hint md:hidden" data-night={settings.theme === "night" ? "true" : undefined}>
             单点屏幕唤起菜单
           </div>
         ) : null}
@@ -1192,12 +1198,14 @@ useEffect(() => {
             <button
               type="button"
               className="reader-mobile-overlay-scrim"
+              data-night={settings.theme === "night" ? "true" : undefined}
               onClick={closeMobileOverlay}
               aria-label="关闭阅读菜单"
             />
 
             <aside
               className="reader-mobile-overlay-sidebar"
+              data-night={settings.theme === "night" ? "true" : undefined}
               data-reader-no-toggle="true"
             >
               <div className="reader-mobile-overlay-header">
@@ -1271,6 +1279,7 @@ useEffect(() => {
 
             <div
               className="reader-mobile-overlay-tools"
+              data-night={settings.theme === "night" ? "true" : undefined}
               data-reader-no-toggle="true"
             >
               <div className="reader-mobile-overlay-grid reader-mobile-overlay-grid--3">
@@ -1730,10 +1739,6 @@ useEffect(() => {
         {/* 内容区 */}
         <div
           className="mt-4"
-          onTouchStart={handleMobileTouchStart}
-          onTouchMove={handleMobileTouchMove}
-          onTouchEnd={handleMobileTouchEnd}
-          onTouchCancel={handleMobileTouchCancel}
         >
           <div className={`reader-paper rounded-[26px] overflow-hidden ${widthClass}`}>
             {/* 单栏：滚动容器 */}
