@@ -147,8 +147,9 @@ export default function BacktestV2({ onBack }) {
               ].map((mode) => (
                 <button
                   key={mode.id}
+                  data-view-mode={mode.id}
                   onClick={() => backtest.setViewMode(mode.id)}
-                  className={`px-3 py-1 rounded-lg text-[11px] font-bold flex items-center gap-2 transition-all ${
+                  className={`backtest-view-btn px-3 py-1 rounded-lg text-[11px] font-bold flex items-center gap-2 transition-all ${
                     backtest.viewMode === mode.id
                       ? "bg-white text-[#8B4F58] shadow-sm"
                       : "text-[#C5A0A6] hover:bg-white/30"
@@ -192,8 +193,8 @@ export default function BacktestV2({ onBack }) {
                   value={backtest.strategyMode}
                   onChange={backtest.setStrategyMode}
                   options={[
-                    { value: "daily", label: "定投", icon: Layers },
                     { value: "lumpSum", label: "梭哈", icon: ArrowUpRight },
+                    { value: "daily", label: "定投", icon: Layers },
                   ]}
                 />
               </div>

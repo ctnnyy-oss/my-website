@@ -317,9 +317,35 @@
     align-items: stretch;
   }
 
-  .backtest-range-options,
-  .backtest-view-group {
+  .backtest-range-options {
     flex-wrap: wrap;
+  }
+
+  .backtest-view-group {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .backtest-view-group .backtest-view-btn {
+    flex: 0 1 auto;
+    justify-content: center;
+    text-align: center;
+    min-width: 0;
+  }
+
+  .backtest-view-group .backtest-view-btn[data-view-mode="A"] {
+    order: 1;
+  }
+
+  .backtest-view-group .backtest-view-btn[data-view-mode="compare"] {
+    order: 2;
+  }
+
+  .backtest-view-group .backtest-view-btn[data-view-mode="B"] {
+    order: 3;
   }
 
   .backtest-toggle-group {

@@ -53,7 +53,7 @@ export const useBacktest = () => {
   // ==================== 显示模式 ====================
   const [activeTab, setActiveTab] = useState("A");
   const [viewMode, setViewMode] = useState("compare");
-  const [strategyMode, setStrategyMode] = useState("daily");
+  const [strategyMode, setStrategyMode] = useState("lumpSum");
   const [metricMode, setMetricMode] = useState("value");
   const [scaleMode, setScaleMode] = useState("linear");
 
@@ -113,7 +113,7 @@ export const useBacktest = () => {
     setRangeMode("since");
     setActiveTab("A");
     setViewMode("compare");
-    setStrategyMode("daily");
+    setStrategyMode("lumpSum");
     setMetricMode("value");
     setScaleMode("linear");
     setError(null);
