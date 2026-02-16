@@ -41,70 +41,116 @@
 }
 
 /* =========================
-   手机折叠工具栏（仅移动端）
+   手机菜单层（单点呼出）
    ========================= */
 
-.reader-mobile-bar {
+.reader-mobile-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+}
+
+.reader-mobile-overlay-scrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(255, 240, 247, 0.24);
+  backdrop-filter: blur(10px);
+}
+
+.reader-mobile-overlay-sidebar {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  bottom: 192px;
+  width: min(78vw, 320px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 14px 44px rgba(255, 163, 190, 0.16);
+  backdrop-filter: blur(16px);
+  animation: readerMobileOverlayIn 200ms ease-out both;
+}
+
+.reader-mobile-overlay-header {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 10px 10px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.55);
 }
 
-.reader-mobile-title {
+.reader-mobile-overlay-title {
   min-width: 0;
   flex: 1;
-  font-size: 0.95rem;
-  font-weight: 900;
-  line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: #6a3a44;
 }
 
-.reader-mobile-toggle {
-  min-width: 80px;
-  justify-content: center;
+.reader-mobile-overlay-toc {
+  flex: 1;
+  overflow: auto;
+  padding: 6px 8px 10px;
 }
 
-.reader-mobile-panel {
-  margin-top: 0;
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-  transform: translateY(-4px);
-  pointer-events: none;
-  transition:
-    max-height 260ms ease,
-    opacity 220ms ease,
-    transform 220ms ease,
-    margin-top 220ms ease;
+.reader-mobile-overlay-tools {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 14px 44px rgba(255, 163, 190, 0.16);
+  backdrop-filter: blur(16px);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: readerMobileOverlayIn 220ms ease-out both;
 }
 
-.reader-mobile-panel.is-expanded {
-  margin-top: 10px;
-  max-height: 680px;
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
-}
-
-.reader-mobile-grid {
+.reader-mobile-overlay-grid {
   display: grid;
   gap: 8px;
-  margin-top: 8px;
 }
 
-.reader-mobile-grid--2 {
+.reader-mobile-overlay-grid--2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.reader-mobile-grid--3 {
+.reader-mobile-overlay-grid--3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.reader-mobile-time {
-  margin-top: 8px;
-  width: 100%;
+.reader-mobile-overlay-hint {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 44;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(106, 58, 68, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: 0 8px 24px rgba(255, 163, 190, 0.2);
+  backdrop-filter: blur(10px);
+}
+
+@keyframes readerMobileOverlayIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* =========================
@@ -286,12 +332,13 @@
 }
 
 @media (max-width: 767.98px) {
-  .reader-mobile-toolbar {
-    position: sticky;
+  .reader-mobile-overlay-grid--3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .reader-mobile-grid--3 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .reader-mobile-overlay-sidebar {
+    width: calc(100vw - 24px);
+    bottom: 210px;
   }
 
   .reader-book-viewport {
@@ -300,8 +347,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .reader-mobile-panel {
+  .reader-mobile-overlay-sidebar,
+  .reader-mobile-overlay-tools {
     transition: none;
+    animation: none;
   }
 }
 

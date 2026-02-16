@@ -33,6 +33,7 @@ const STORAGE = {
   recent: "mx_reader_recent_v2",
   progressPrefix: "mx_reader_progress_v2:",
   bookmarksPrefix: "mx_reader_bookmarks_v2:",
+  mobileOverlayHintSeen: "mx_reader_mobile_overlay_hint_seen_v1",
 };
 
 const DEFAULT_SETTINGS = {
@@ -219,7 +220,11 @@ export default function ReaderPage({ file: fileProp, title: titleProp, onBack, m
   const [progress, setProgress] = useState(0);
   const [activeHeadingId, setActiveHeadingId] = useState("");
   const [showInfoPanel, setShowInfoPanel] = useState(true);
-  const [mobileToolbarExpanded, setMobileToolbarExpanded] = useState(false);
+  const [mobileOverlayOpen, setMobileOverlayOpen] = useState(false);
+  const [mobileHintVisible, setMobileHintVisible] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < 768 : false
+  );
   const infoMode = !!meta && showInfoPanel;
 
   // 单栏滚动 refs
@@ -239,13 +244,22 @@ export default function ReaderPage({ file: fileProp, title: titleProp, onBack, m
   const prevCursorRef = useRef(0);
   const flipTimerRef = useRef(null);
   const [bookGeom, setBookGeom] = useState({ gap: 44, pageW: 0, pageH: 0 });
+  const mobileTapRef = useRef({
+    active: false,
+    moved: false,
+    x: 0,
+    y: 0,
+    t: 0,
+  });
+  const mobileHintCheckedRef = useRef(false);
 
-  const collapseMobileToolbar = () => setMobileToolbarExpanded(false);
+  const openMobileOverlay = () => setMobileOverlayOpen(true);
+  const closeMobileOverlay = () => setMobileOverlayOpen(false);
 
   const openReaderDrawer = (tab) => {
     setDrawerOpen(true);
     setDrawerTab(tab);
-    collapseMobileToolbar();
+    closeMobileOverlay();
   };
 
   const blocks = useMemo(() => parseToBlocks(raw), [raw]);
@@ -345,6 +359,52 @@ export default function ReaderPage({ file: fileProp, title: titleProp, onBack, m
       // ignore
     }
   }, [bookmarksKey, bookmarks]);
+
+  useEffect(() => {
+    const onResize = () => {
+      setIsMobileViewport(window.innerWidth < 768);
+    };
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileViewport || mobileHintCheckedRef.current) return;
+    mobileHintCheckedRef.current = true;
+    try {
+      const seen = localStorage.getItem(STORAGE.mobileOverlayHintSeen) === "1";
+      if (!seen) {
+        setMobileHintVisible(true);
+        localStorage.setItem(STORAGE.mobileOverlayHintSeen, "1");
+      }
+    } catch {
+      // ignore
+    }
+  }, [isMobileViewport]);
+
+  useEffect(() => {
+    if (!mobileHintVisible) return;
+    const t = setTimeout(() => setMobileHintVisible(false), 2200);
+    return () => clearTimeout(t);
+  }, [mobileHintVisible]);
+
+  useEffect(() => {
+    if (!mobileOverlayOpen) return;
+    setMobileHintVisible(false);
+  }, [mobileOverlayOpen]);
+
+  useEffect(() => {
+    if (!isMobileViewport) {
+      setMobileOverlayOpen(false);
+      return;
+    }
+    const prevOverflow = document.body.style.overflow;
+    if (mobileOverlayOpen) document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [mobileOverlayOpen, isMobileViewport]);
 
   // ========= 单栏：计算 heading 位置（目录高亮 + 当前章）=========
   useEffect(() => {
@@ -647,7 +707,7 @@ useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") {
         setDrawerOpen(false);
-        collapseMobileToolbar();
+        closeMobileOverlay();
       }
 
       // 快捷打开搜索
@@ -655,7 +715,7 @@ useEffect(() => {
         e.preventDefault();
         setDrawerOpen(true);
         setDrawerTab("search");
-        collapseMobileToolbar();
+        closeMobileOverlay();
       }
 
       if (!isBook) return;
@@ -684,7 +744,7 @@ useEffect(() => {
   }, [isBook, pages.length]);
 
   useEffect(() => {
-    if (drawerOpen) collapseMobileToolbar();
+    if (drawerOpen) closeMobileOverlay();
   }, [drawerOpen]);
 
   // ========= 通用跳转 =========
@@ -704,7 +764,7 @@ useEffect(() => {
 
   const jumpToId = (id) => {
     if (!id) return;
-    collapseMobileToolbar();
+    closeMobileOverlay();
     if (!isBook) {
       const sc = scrollerRef.current;
       if (!sc) return;
@@ -721,7 +781,7 @@ useEffect(() => {
   };
 
   const jumpToBlockIndex = (blockIndex) => {
-    collapseMobileToolbar();
+    closeMobileOverlay();
     if (!isBook) {
       const sc = scrollerRef.current;
       if (!sc) return;
@@ -736,7 +796,7 @@ useEffect(() => {
   };
 
   const jumpToPct = (pct) => {
-    collapseMobileToolbar();
+    closeMobileOverlay();
     if (isBook) jumpToPctBook(pct);
     else jumpToPctScroll(pct);
   };
@@ -873,6 +933,54 @@ useEffect(() => {
     const pct = pages.length > 1 ? pageCursor / Math.max(1, pages.length - 1) : 0;
     pendingPctToScrollRef.current = clamp(pct, 0, 1);
     setSettings((s) => ({ ...s, columns: 1, width: "fill" }));
+  };
+
+  const isInteractiveTarget = (target) => {
+    if (!(target instanceof Element)) return false;
+    return Boolean(
+      target.closest(
+        'button,a,input,textarea,select,label,[role="button"],[data-reader-no-toggle="true"]'
+      )
+    );
+  };
+
+  const handleMobileTouchStart = (e) => {
+    if (!isMobileViewport || drawerOpen || mobileOverlayOpen) return;
+    const touch = e.touches?.[0];
+    if (!touch) return;
+    mobileTapRef.current = {
+      active: true,
+      moved: false,
+      x: touch.clientX,
+      y: touch.clientY,
+      t: Date.now(),
+    };
+  };
+
+  const handleMobileTouchMove = (e) => {
+    const tap = mobileTapRef.current;
+    if (!tap.active) return;
+    const touch = e.touches?.[0];
+    if (!touch) return;
+    if (Math.abs(touch.clientX - tap.x) > 10 || Math.abs(touch.clientY - tap.y) > 10) {
+      tap.moved = true;
+    }
+  };
+
+  const handleMobileTouchEnd = (e) => {
+    if (!isMobileViewport || drawerOpen) return;
+    const tap = mobileTapRef.current;
+    mobileTapRef.current.active = false;
+    if (!tap.active) return;
+    if (tap.moved) return;
+    if (Date.now() - tap.t > 320) return;
+    if (isInteractiveTarget(e.target)) return;
+    if (mobileOverlayOpen) closeMobileOverlay();
+    else openMobileOverlay();
+  };
+
+  const handleMobileTouchCancel = () => {
+    mobileTapRef.current.active = false;
   };
 
   // ========= 渲染：块 =========
@@ -1056,11 +1164,31 @@ useEffect(() => {
         ) : null}
 
         <div className={`${infoMode ? "flex-1 min-w-0 lg:overflow-y-auto lg:h-screen" : ""} px-4 md:px-6 lg:px-8 py-4 md:py-6`}>
-        {/* 工具栏 */}
-        <div className="sticky top-2 md:top-4 z-30 reader-mobile-toolbar">
-          <div className="reader-toolbar rounded-[22px]">
-            <div className="md:hidden px-3 py-2.5">
-              <div className="reader-mobile-bar">
+        {isMobileViewport && mobileHintVisible && !mobileOverlayOpen ? (
+          <div className="reader-mobile-overlay-hint md:hidden">
+            单点屏幕唤起菜单
+          </div>
+        ) : null}
+
+        {mobileOverlayOpen ? (
+          <div
+            className="reader-mobile-overlay md:hidden"
+            role="dialog"
+            aria-modal="true"
+            aria-label="阅读菜单"
+          >
+            <button
+              type="button"
+              className="reader-mobile-overlay-scrim"
+              onClick={closeMobileOverlay}
+              aria-label="关闭阅读菜单"
+            />
+
+            <aside
+              className="reader-mobile-overlay-sidebar"
+              data-reader-no-toggle="true"
+            >
+              <div className="reader-mobile-overlay-header">
                 <button
                   onClick={goBack}
                   className="ripple-button reader-chip inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-black shrink-0"
@@ -1072,222 +1200,253 @@ useEffect(() => {
                 </button>
 
                 <div
-                  className="reader-mobile-title reader-title-glow"
+                  className="reader-mobile-overlay-title"
                   style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
-                  title={effectiveTitle}
                 >
-                  {effectiveTitle}
+                  <div className="font-black truncate" title={effectiveTitle}>
+                    {effectiveTitle}
+                  </div>
+                  <div className="text-[11px] opacity-70 truncate">
+                    {toc.length ? `${toc.length} 章` : "暂无章节"}
+                  </div>
                 </div>
 
                 <button
                   type="button"
-                  className="ripple-button reader-chip reader-mobile-toggle inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-black shrink-0"
+                  className="ripple-button reader-chip inline-flex items-center justify-center w-10 h-10 rounded-full shrink-0"
                   style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
-                  onClick={() => setMobileToolbarExpanded((v) => !v)}
-                  aria-expanded={mobileToolbarExpanded}
-                  aria-controls="reader-mobile-panel"
-                  title={mobileToolbarExpanded ? "收起工具栏" : "展开工具栏"}
+                  onClick={closeMobileOverlay}
+                  aria-label="关闭菜单"
+                  title="关闭菜单"
                 >
-                  <List size={16} />
-                  {mobileToolbarExpanded ? "收起" : "工具"}
+                  <X size={16} />
                 </button>
               </div>
 
-              <div
-                id="reader-mobile-panel"
-                className={`reader-mobile-panel ${mobileToolbarExpanded ? "is-expanded" : ""}`}
-                aria-hidden={!mobileToolbarExpanded}
-              >
-                <div className="reader-mobile-grid reader-mobile-grid--3">
-                  <button
-                    onClick={() => openReaderDrawer("toc")}
-                    className="ripple-button reader-chip inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full text-sm font-black"
-                    style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
-                    title="目录"
-                  >
-                    <List size={16} />
-                    目录
-                  </button>
-
-                  <button
-                    onClick={() => openReaderDrawer("search")}
-                    className="ripple-button reader-chip inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full text-sm font-black"
-                    style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
-                    title="搜索（⌘/Ctrl + /）"
-                  >
-                    <Search size={16} />
-                    搜索
-                  </button>
-
-                  <button
-                    onClick={() => openReaderDrawer("bookmarks")}
-                    className="ripple-button reader-chip inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full text-sm font-black"
-                    style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
-                    title="书签"
-                  >
-                    <Bookmark size={16} />
-                    书签
-                  </button>
-                </div>
-
-                <div className="reader-mobile-grid reader-mobile-grid--3">
-                  <button
-                    onClick={addBookmark}
-                    className="ripple-button inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full text-sm font-black"
-                    style={{
-                      background:
-                        settings.theme === "night"
-                          ? "rgba(255, 170, 200, 0.16)"
-                          : "rgba(255, 170, 200, 0.32)",
-                      border:
-                        settings.theme === "night"
-                          ? "1px solid rgba(255, 170, 200, 0.22)"
-                          : "1px solid rgba(255, 170, 200, 0.40)",
-                      color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44",
-                      boxShadow:
-                        settings.theme === "night"
-                          ? "0 10px 26px rgba(255,170,200,0.12)"
-                          : "0 10px 26px rgba(255,170,200,0.18)",
-                    }}
-                    title="加入书签"
-                  >
-                    <Bookmark size={16} />
-                    +
-                  </button>
-
-                  <button
-                    onClick={() =>
-                      setSettings((s) => ({
-                        ...s,
-                        theme: s.theme === "night" ? "milk" : "night",
-                      }))
-                    }
-                    className="ripple-button reader-chip inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full text-sm font-black"
-                    style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
-                    title={settings.theme === "night" ? "切回日间" : "切换夜间"}
-                  >
-                    {settings.theme === "night" ? <Sun size={16} /> : <Moon size={16} />}
-                    {settings.theme === "night" ? "日间" : "夜间"}
-                  </button>
-
-                  <button
-                    onClick={downloadTxt}
-                    className="ripple-button reader-chip inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full text-sm font-black"
-                    style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
-                    title="下载 TXT"
-                  >
-                    <Download size={16} />
-                    下载
-                  </button>
-                </div>
-
-                <div className="reader-mobile-grid reader-mobile-grid--2">
-                  <div
-                    className="reader-chip inline-flex items-center justify-center gap-2 px-2 py-2 rounded-full text-xs font-black"
-                    style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
-                    title="字号"
-                  >
+              <div className="reader-mobile-overlay-toc mx-reader-scrollbar">
+                {toc.length ? (
+                  toc.map((h) => (
                     <button
-                      onClick={() =>
-                        setSettings((s) => ({
-                          ...s,
-                          fontSize: clamp((s.fontSize || 18) - 1, 14, 28),
-                        }))
-                      }
-                      className="ripple-button px-2 py-1 rounded-full font-black"
+                      key={h.id}
+                      onClick={() => jumpToId(h.id)}
+                      className="w-full text-left rounded-xl px-3 py-2 text-xs font-semibold transition truncate"
+                      style={{
+                        color:
+                          activeHeadingId === h.id
+                            ? (settings.theme === "night" ? "#FFB4D6" : "#FF7EA9")
+                            : (settings.theme === "night"
+                                ? "rgba(248,233,238,0.85)"
+                                : "rgba(106,58,68,0.78)"),
+                        background:
+                          activeHeadingId === h.id
+                            ? (settings.theme === "night"
+                                ? "rgba(255,170,200,0.14)"
+                                : "rgba(255,170,200,0.16)")
+                            : "transparent",
+                      }}
+                      title={h.text}
                     >
-                      <Minus size={16} />
+                      {h.text}
                     </button>
-                    <span className="px-2 text-xs font-black">A {settings.fontSize}</span>
-                    <button
-                      onClick={() =>
-                        setSettings((s) => ({
-                          ...s,
-                          fontSize: clamp((s.fontSize || 18) + 1, 14, 28),
-                        }))
-                      }
-                      className="ripple-button px-2 py-1 rounded-full font-black"
-                    >
-                      <Plus size={16} />
-                    </button>
+                  ))
+                ) : (
+                  <div className="text-xs font-semibold opacity-75 px-3 py-2">
+                    暂未检测到章节标题
                   </div>
+                )}
+              </div>
+            </aside>
 
-                  <div
-                    className="reader-chip inline-flex items-center gap-2 px-3 py-2 rounded-full text-xs font-black"
-                    style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
-                    title="行距"
-                  >
-                    <span>行距</span>
-                    <input
-                      type="range"
-                      min="1.4"
-                      max="2.6"
-                      step="0.05"
-                      value={settings.lineHeight}
-                      onChange={(e) =>
-                        setSettings((s) => ({
-                          ...s,
-                          lineHeight: Number(e.target.value),
-                        }))
-                      }
-                      className="w-full min-w-0"
-                    />
-                    <span className="font-mono opacity-70">{Number(settings.lineHeight).toFixed(2)}</span>
-                  </div>
-                </div>
+            <div
+              className="reader-mobile-overlay-tools"
+              data-reader-no-toggle="true"
+            >
+              <div className="reader-mobile-overlay-grid reader-mobile-overlay-grid--3">
+                <button
+                  onClick={() => openReaderDrawer("search")}
+                  className="ripple-button reader-chip inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full text-sm font-black"
+                  style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
+                  title="搜索（⌘/Ctrl + /）"
+                >
+                  <Search size={16} />
+                  搜索
+                </button>
 
-                <div className="reader-mobile-grid reader-mobile-grid--3">
-                  <button
-                    onClick={() => setSettings((s) => ({ ...s, indent: !s.indent }))}
-                    className="ripple-button reader-chip inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full text-xs font-black"
-                    style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
-                    title="首行缩进"
-                  >
-                    缩进：{settings.indent ? "开" : "关"}
-                  </button>
+                <button
+                  onClick={() => openReaderDrawer("bookmarks")}
+                  className="ripple-button reader-chip inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full text-sm font-black"
+                  style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
+                  title="书签"
+                >
+                  <Bookmark size={16} />
+                  书签
+                </button>
 
-                  <button
-                    onClick={toggleColumns}
-                    className="ripple-button reader-chip inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full text-xs font-black"
-                    style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
-                    title="单双栏"
-                  >
-                    {isBook ? "双页" : "单栏"}
-                  </button>
+                <button
+                  onClick={addBookmark}
+                  className="ripple-button inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full text-sm font-black"
+                  style={{
+                    background:
+                      settings.theme === "night"
+                        ? "rgba(255, 170, 200, 0.16)"
+                        : "rgba(255, 170, 200, 0.32)",
+                    border:
+                      settings.theme === "night"
+                        ? "1px solid rgba(255, 170, 200, 0.22)"
+                        : "1px solid rgba(255, 170, 200, 0.40)",
+                    color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44",
+                    boxShadow:
+                      settings.theme === "night"
+                        ? "0 10px 26px rgba(255,170,200,0.12)"
+                        : "0 10px 26px rgba(255,170,200,0.18)",
+                  }}
+                  title="加入书签"
+                >
+                  <Bookmark size={16} />
+                  <span>+</span>
+                </button>
+              </div>
 
-                  <button
-                    onClick={() => {
-                      if (!isBook) return;
-                      setSettings((s) => ({
-                        ...s,
-                        width:
-                          s.width === "fill"
-                            ? "wide"
-                            : s.width === "wide"
-                            ? "compact"
-                            : "fill",
-                      }));
-                    }}
-                    className={`ripple-button reader-chip inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full text-xs font-black ${!isBook ? "opacity-60 cursor-not-allowed" : ""}`}
-                    style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
-                    title="宽度"
-                    disabled={!isBook}
-                  >
-                    宽度：{isBook ? settings.width : "fill"}
-                  </button>
-                </div>
+              <div className="reader-mobile-overlay-grid reader-mobile-overlay-grid--3">
+                <button
+                  onClick={() =>
+                    setSettings((s) => ({
+                      ...s,
+                      theme: s.theme === "night" ? "milk" : "night",
+                    }))
+                  }
+                  className="ripple-button reader-chip inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full text-sm font-black"
+                  style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
+                  title={settings.theme === "night" ? "切回日间" : "切换夜间"}
+                >
+                  {settings.theme === "night" ? <Sun size={16} /> : <Moon size={16} />}
+                  {settings.theme === "night" ? "日间" : "夜间"}
+                </button>
+
+                <button
+                  onClick={downloadTxt}
+                  className="ripple-button reader-chip inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full text-sm font-black"
+                  style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
+                  title="下载 TXT"
+                >
+                  <Download size={16} />
+                  下载
+                </button>
 
                 <div
-                  className="reader-chip inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full text-xs font-black reader-mobile-time"
+                  className="reader-chip inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full text-xs font-black"
                   style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
                   title="时间"
                 >
                   <span className="opacity-70">{formatTime(Date.now())}</span>
                 </div>
               </div>
-            </div>
 
-            <div className="hidden md:block px-3 py-3 md:px-4 md:py-3">
+              <div className="reader-mobile-overlay-grid reader-mobile-overlay-grid--2">
+                <div
+                  className="reader-chip inline-flex items-center justify-center gap-2 px-2 py-2 rounded-full text-xs font-black"
+                  style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
+                  title="字号"
+                >
+                  <button
+                    onClick={() =>
+                      setSettings((s) => ({
+                        ...s,
+                        fontSize: clamp((s.fontSize || 18) - 1, 14, 28),
+                      }))
+                    }
+                    className="ripple-button px-2 py-1 rounded-full font-black"
+                  >
+                    <Minus size={16} />
+                  </button>
+                  <span className="px-2 text-xs font-black">A {settings.fontSize}</span>
+                  <button
+                    onClick={() =>
+                      setSettings((s) => ({
+                        ...s,
+                        fontSize: clamp((s.fontSize || 18) + 1, 14, 28),
+                      }))
+                    }
+                    className="ripple-button px-2 py-1 rounded-full font-black"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+
+                <div
+                  className="reader-chip inline-flex items-center gap-2 px-3 py-2 rounded-full text-xs font-black"
+                  style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
+                  title="行距"
+                >
+                  <span>行距</span>
+                  <input
+                    type="range"
+                    min="1.4"
+                    max="2.6"
+                    step="0.05"
+                    value={settings.lineHeight}
+                    onChange={(e) =>
+                      setSettings((s) => ({
+                        ...s,
+                        lineHeight: Number(e.target.value),
+                      }))
+                    }
+                    className="w-full min-w-0"
+                  />
+                  <span className="font-mono opacity-70">
+                    {Number(settings.lineHeight).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="reader-mobile-overlay-grid reader-mobile-overlay-grid--3">
+                <button
+                  onClick={() => setSettings((s) => ({ ...s, indent: !s.indent }))}
+                  className="ripple-button reader-chip inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full text-xs font-black"
+                  style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
+                  title="首行缩进"
+                >
+                  缩进：{settings.indent ? "开" : "关"}
+                </button>
+
+                <button
+                  onClick={toggleColumns}
+                  className="ripple-button reader-chip inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full text-xs font-black"
+                  style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
+                  title="单双栏"
+                >
+                  {isBook ? "双页" : "单栏"}
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (!isBook) return;
+                    setSettings((s) => ({
+                      ...s,
+                      width:
+                        s.width === "fill"
+                          ? "wide"
+                          : s.width === "wide"
+                          ? "compact"
+                          : "fill",
+                    }));
+                  }}
+                  className={`ripple-button reader-chip inline-flex items-center justify-center gap-2 px-3 py-2 rounded-full text-xs font-black ${!isBook ? "opacity-60 cursor-not-allowed" : ""}`}
+                  style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
+                  title="宽度"
+                  disabled={!isBook}
+                >
+                  宽度：{isBook ? settings.width : "fill"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {/* 工具栏 */}
+        <div className="hidden md:block sticky top-4 z-30">
+          <div className="reader-toolbar rounded-[22px]">
+            <div className="px-3 py-3 md:px-4 md:py-3">
               <div className="flex flex-col gap-2">
                 {/* Row 1 */}
                 <div className="flex items-center justify-between gap-3">
@@ -1559,9 +1718,10 @@ useEffect(() => {
         {/* 内容区 */}
         <div
           className="mt-4"
-          onPointerDown={() => {
-            if (mobileToolbarExpanded) collapseMobileToolbar();
-          }}
+          onTouchStart={handleMobileTouchStart}
+          onTouchMove={handleMobileTouchMove}
+          onTouchEnd={handleMobileTouchEnd}
+          onTouchCancel={handleMobileTouchCancel}
         >
           <div className={`reader-paper rounded-[26px] overflow-hidden ${widthClass}`}>
             {/* 单栏：滚动容器 */}
