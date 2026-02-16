@@ -259,54 +259,45 @@
 }
 
 @media (max-width: 768px) {
-  .backtest-root {
-    width: 100%;
+  .backtest-root.backtest-root {
+    width: 100% !important;
     min-height: 100dvh;
-    height: auto;
-    overflow-x: hidden;
-    overflow-y: auto;
-    flex-direction: column;
+    height: auto !important;
+    overflow: visible !important;
+    flex-direction: column !important;
   }
 
-  .backtest-sidebar {
+  .backtest-sidebar.backtest-sidebar {
+    order: 1;
     width: 100% !important;
-    height: auto;
+    height: auto !important;
     border-right: none;
     border-bottom: 1px solid rgba(255, 255, 255, 0.45);
     box-shadow: none;
   }
 
-  .backtest-sidebar-body,
-  .backtest-sidebar-funds-card,
-  .backtest-sidebar-funds-list {
-    flex: none;
-    min-height: auto;
+  .backtest-main.backtest-main {
+    order: 2;
+    width: 100% !important;
+    min-width: 0;
+    flex: none !important;
   }
 
-  .backtest-metrics-wrap {
+  .backtest-metrics-wrap.backtest-metrics-wrap {
+    order: 3;
     width: 100%;
     padding: 0 8px 8px;
   }
 
-  .backtest-metrics-panel {
-    width: 100% !important;
-    height: auto;
+  .backtest-sidebar-body.backtest-sidebar-body,
+  .backtest-sidebar-funds-card.backtest-sidebar-funds-card,
+  .backtest-sidebar-funds-list.backtest-sidebar-funds-list {
+    flex: none !important;
+    min-height: auto !important;
   }
 
-  .backtest-metrics-grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: none !important;
-    height: auto;
-  }
-
-  .backtest-main {
-    width: 100%;
-    min-width: 0;
-    flex: none;
-  }
-
-  .backtest-main-header {
-    height: auto;
+  .backtest-main-header.backtest-main-header {
+    height: auto !important;
     padding: 8px 10px;
     align-items: stretch;
   }
@@ -345,17 +336,17 @@
     display: none;
   }
 
-  .backtest-chart-wrap {
-    flex: none;
+  .backtest-chart-wrap.backtest-chart-wrap {
+    flex: none !important;
     min-height: 0;
-    overflow: visible;
+    overflow: visible !important;
     padding: 8px;
   }
 
-  .backtest-chart-section {
-    flex: none;
+  .backtest-chart-section.backtest-chart-section {
+    flex: none !important;
     min-height: 0;
-    height: auto;
+    height: auto !important;
   }
 
   .backtest-chart-dd {
@@ -368,6 +359,17 @@
     flex: none !important;
     height: 320px;
     min-height: 320px;
+  }
+
+  .backtest-metrics-panel.backtest-metrics-panel {
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .backtest-metrics-grid.backtest-metrics-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: none !important;
+    height: auto !important;
   }
 
   .sidebar-hero-title {
