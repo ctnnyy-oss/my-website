@@ -41,12 +41,80 @@
 }
 
 /* =========================
+   手机折叠工具栏（仅移动端）
+   ========================= */
+
+.reader-mobile-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reader-mobile-title {
+  min-width: 0;
+  flex: 1;
+  font-size: 0.95rem;
+  font-weight: 900;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reader-mobile-toggle {
+  min-width: 80px;
+  justify-content: center;
+}
+
+.reader-mobile-panel {
+  margin-top: 0;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition:
+    max-height 260ms ease,
+    opacity 220ms ease,
+    transform 220ms ease,
+    margin-top 220ms ease;
+}
+
+.reader-mobile-panel.is-expanded {
+  margin-top: 10px;
+  max-height: 680px;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.reader-mobile-grid {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.reader-mobile-grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.reader-mobile-grid--3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.reader-mobile-time {
+  margin-top: 8px;
+  width: 100%;
+}
+
+/* =========================
    ✅ 双页书本模式（核心样式）
    ========================= */
 
 .reader-book-viewport{
   position: relative;
   overflow: hidden;         /* 禁止纵向滚动 */
+  height: calc(100vh - 210px);
 }
 
 /* spread：两页 + 中缝 */
@@ -214,6 +282,26 @@
   }
   .reader-crease{
     display: none;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .reader-mobile-toolbar {
+    position: sticky;
+  }
+
+  .reader-mobile-grid--3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .reader-book-viewport {
+    height: min(72dvh, 760px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reader-mobile-panel {
+    transition: none;
   }
 }
 
