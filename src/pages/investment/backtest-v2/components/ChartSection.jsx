@@ -17,6 +17,7 @@ import { Activity, TrendingUp } from "lucide-react";
 import { LOG_EPS, THEME } from "../constants";
 import { dateToTime, timeToDateStr } from "../utils/date";
 import { formatAssetTick, formatAssetTickPrecise, formatPercentTick } from "../utils/format";
+import { buildAdaptiveXTicks, formatAdaptiveXTick } from "../utils/xAxis";
 import { CustomValueTooltip, CustomReturnTooltip } from "./Tooltips";
 
 const CHART_SPLIT = 0.38;
@@ -26,6 +27,7 @@ const ChartSection = ({
   scaleMode,
   metricMode,
   viewMode,
+  rangeMode,
   ddDomain,
   ddTicks,
   chartYTicks,
@@ -46,20 +48,40 @@ const ChartSection = ({
       : ["auto", "auto"];
 
   const subAlpha = Number(chartState?.subAlpha) || 0;
+  const chartRows = Array.isArray(chartState?.chartData) ? chartState.chartData : [];
+  const lastVisibleT = Number(chartRows[chartRows.length - 1]?.t);
+  const hasVisibleT = Number.isFinite(lastVisibleT);
+  const mainTroughT = mainDdWindow?.hasDrawdown ? dateToTime(mainDdWindow?.troughDate) : NaN;
+  const subTroughT = subDdWindow?.hasDrawdown ? dateToTime(subDdWindow?.troughDate) : NaN;
+  const showMainDdArea =
+    !!mainDdWindow?.hasDrawdown &&
+    hasVisibleT &&
+    Number.isFinite(mainTroughT) &&
+    lastVisibleT >= mainTroughT;
+  const showSubDdArea =
+    !!subDdWindow?.hasDrawdown &&
+    subAlpha > 0.02 &&
+    hasVisibleT &&
+    Number.isFinite(subTroughT) &&
+    lastVisibleT >= subTroughT;
+  const assetXTicks = React.useMemo(
+    () => buildAdaptiveXTicks(chartState?.chartData, rangeMode),
+    [chartState?.chartData, rangeMode],
+  );
 
   return (
-    <div className="flex-1 min-w-0 min-h-0 flex flex-col gap-2">
+    <div className="backtest-chart-section flex-1 min-w-0 min-h-0 flex flex-col gap-2">
       {/* 上方：回撤图 */}
       <div
         {...cardFXProps}
         style={{ flex: CHART_SPLIT }}
-        className="bg-white/60 backdrop-blur-xl border border-white/60 rounded-[24px] p-3 shadow-sm card-bloom relative flex flex-col min-h-0"
+        className="backtest-chart-dd bg-white/60 backdrop-blur-xl border border-white/60 rounded-[24px] p-3 shadow-sm card-bloom relative flex flex-col min-h-0"
       >
         <h3 className="text-xs font-bold text-[#8B4F58] mb-1 flex items-center gap-2">
           <Activity size={14} className="text-[#FF8FAB]" /> 回撤曲线
           {(mainDdWindow?.hasDrawdown || subDdWindow?.hasDrawdown) && (
             <span className="text-[9px] px-2 py-0.5 bg-[#FFF0F5] text-[#FF8FAB] rounded-full border border-[#FFC2D1]">
-              高亮最大坑
+              高亮最大回撤
             </span>
           )}
         </h3>
@@ -85,14 +107,14 @@ const ChartSection = ({
                 formatter={(v) => [`${Number(v).toFixed(2)}%`, "回撤"]}
               />
               <ReferenceLine y={0} stroke="rgba(255,182,193,0.35)" strokeDasharray="4 4" />
-              {mainDdWindow?.hasDrawdown && (
+              {showMainDdArea && (
                 <ReferenceArea
                   x1={dateToTime(mainDdWindow.peakDate)}
                   x2={dateToTime(mainDdWindow.troughDate)}
                   strokeOpacity={0} fill="var(--main-color)" fillOpacity={0.1}
                 />
               )}
-              {subDdWindow?.hasDrawdown && subAlpha > 0.02 && (
+              {showSubDdArea && (
                 <ReferenceArea
                   x1={dateToTime(subDdWindow.peakDate)}
                   x2={dateToTime(subDdWindow.troughDate)}
@@ -118,7 +140,7 @@ const ChartSection = ({
       <div
         {...cardFXProps}
         style={{ flex: 1 - CHART_SPLIT }}
-        className="bg-white/60 backdrop-blur-xl border border-white/60 rounded-[24px] p-3 shadow-sm card-bloom relative flex flex-col min-h-0"
+        className="backtest-chart-asset bg-white/60 backdrop-blur-xl border border-white/60 rounded-[24px] p-3 shadow-sm card-bloom relative flex flex-col min-h-0"
       >
         <div className="flex justify-between items-center mb-1">
           <h3 className="text-xs font-bold text-[#8B4F58] flex items-center gap-2">
@@ -151,7 +173,8 @@ const ChartSection = ({
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,182,193,0.2)" />
               <XAxis
                 dataKey="t" type="number" scale="time" domain={safeXDomain}
-                tickFormatter={(t) => new Date(Number(t)).toISOString().slice(0, 7)}
+                ticks={assetXTicks}
+                tickFormatter={(t) => formatAdaptiveXTick(t, rangeMode)}
                 tick={{ fontSize: 9, fill: "#C5A0A6" }}
                 axisLine={false} tickLine={false} dy={10} minTickGap={30}
               />

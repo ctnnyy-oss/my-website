@@ -1,0 +1,28 @@
+﻿{
+  "order": ["novels", "illustrations", "comics", "animations", "games", "tools"],
+  "home": {
+    "title": "慕溪的个人网站",
+    "subtitle": "统一结构：左侧介绍 + 右侧六卡",
+    "left": {
+      "title": "ABOUT（关于这里）",
+      "paragraphs": [
+        "这里是我的作品宇宙：小说、插画、漫画、动画、游戏、工具。",
+        "所有分类页统一骨架，手机和桌面都更容易适配。"
+      ],
+      "bullets": [
+        "二级：左介绍 + 右六卡",
+        "三级：纯网格作品墙",
+        "功能页保留原有能力"
+      ],
+      "footer": "可以继续在 public/content/tree.json 里扩展更多层级。"
+    }
+  },
+  "modules": {
+    "tools": {
+      "grid": {
+        "title": "工具作品墙",
+        "subtitle": "第一个工具保留投资组合回撤模型"
+      }
+    }
+  }
+}

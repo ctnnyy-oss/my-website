@@ -144,6 +144,22 @@ export const useChartData = (results, viewMode, metricMode, scaleMode, rangeMode
     const inRange = (r) =>
       (startT == null || r.t >= startT) && (endT == null || r.t <= endT);
     const visibleRows = rows.filter(inRange);
+    const pct = (a, b) => {
+      if (a == null || b == null) return 0;
+      const aa = Number(a);
+      const bb = Number(b);
+      if (!Number.isFinite(aa) || !Number.isFinite(bb) || bb <= 0) return 0;
+      return ((aa - bb) / bb) * 100;
+    };
+    const visibleRowsWithDelta = visibleRows.map((r, idx) => {
+      const prev = visibleRows[idx - 1];
+      return {
+        ...r,
+        idx,
+        chgMain: idx === 0 ? 0 : pct(r.vMain, prev?.vMain),
+        chgSub: idx === 0 ? 0 : pct(r.vSub, prev?.vSub),
+      };
+    });
     const pickOriginValue = () => {
       const firstVisible = visibleRows[0];
       if (isFiniteNum(firstVisible?.vMain)) return firstVisible.vMain;
@@ -238,7 +254,7 @@ export const useChartData = (results, viewMode, metricMode, scaleMode, rangeMode
     }
 
     return {
-      chartData: rows,
+      chartData: visibleRowsWithDelta,
       xDomain: [startT, endT],
       yDomain,
       yAxisAnchor,
@@ -291,5 +307,4 @@ export const useChartData = (results, viewMode, metricMode, scaleMode, rangeMode
 
   return { chartState, chartYTicks, ddTicks, ddDomain, ddWindows, mainDdWindow, subDdWindow };
 };
-
 

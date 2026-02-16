@@ -1,197 +1,125 @@
-﻿import { useEffect, useRef, useState } from "react";
-import { timeToDateStr } from "../utils/date";
-import { clamp01, isFiniteNum, lerp } from "../utils/math";
+import { useEffect, useRef, useState } from "react";
+import { clamp, clamp01, isFiniteNum, lerp } from "../utils/math";
 
 const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
-/**
- * 检测两个 xDomain 的时间跨度是否足够接近（比值 < 2 倍）
- * 不接近 → 说明用户切了区间（近1月→成立来），此时不做逐点插值，防止"熔断"闪烁
- */
-const areDomainsSimilar = (a, b) => {
-  if (!Array.isArray(a) || !Array.isArray(b)) return false;
-  const [a0, a1] = a.map(Number);
-  const [b0, b1] = b.map(Number);
-  if (![a0, a1, b0, b1].every(Number.isFinite)) return false;
-  const aSpan = a1 - a0;
-  const bSpan = b1 - b0;
-  if (aSpan <= 0 || bSpan <= 0) return false;
-  return Math.max(aSpan, bSpan) / Math.min(aSpan, bSpan) < 2;
+const toNumericDomain = (domain) => {
+  if (!Array.isArray(domain) || domain.length !== 2) return null;
+  const a = Number(domain[0]);
+  const b = Number(domain[1]);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  return [a, b];
 };
 
-const toTimeSet = (arr) => {
-  const set = new Set();
-  (Array.isArray(arr) ? arr : []).forEach((p) => {
-    const t = Number(p?.t);
-    if (Number.isFinite(t)) set.add(t);
-  });
-  return set;
-};
-
-const overlapRatio = (a, b) => {
-  if (!(a instanceof Set) || !(b instanceof Set)) return 0;
-  if (a.size === 0 || b.size === 0) return 0;
-
-  const [small, large] = a.size <= b.size ? [a, b] : [b, a];
-  let hit = 0;
-  small.forEach((t) => {
-    if (large.has(t)) hit += 1;
-  });
-  return hit / Math.min(a.size, b.size);
-};
-
-const hasSameRangeMode = (from, to) => {
-  const a = from?.transitionMeta?.rangeMode;
-  const b = to?.transitionMeta?.rangeMode;
-  return typeof a === "string" && typeof b === "string" && a === b;
+const lerpDomain = (fromDomain, toDomain, t) => {
+  const to = toNumericDomain(toDomain);
+  if (!to) return toDomain;
+  const from = toNumericDomain(fromDomain);
+  if (!from) return to;
+  return [lerp(from[0], to[0], t), lerp(from[1], to[1], t)];
 };
 
 export const useTweenChartState = (targetState, duration = 880) => {
-  const [state, setState] = useState(targetState);
-  const stateRef = useRef(targetState);
+  const [state, setState] = useState(null);
+  const stateRef = useRef(null);
   const rafRef = useRef(null);
+  const animIdRef = useRef(0);
 
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
 
   useEffect(() => {
+    const _durationHint = Number(duration);
+
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+
     if (!targetState) {
+      animIdRef.current += 1;
       setState(null);
       return;
     }
-    if (!stateRef.current) {
-      setState(targetState);
+
+    const to = targetState;
+    const rows = Array.isArray(to.chartData) ? to.chartData : [];
+    const n = rows.length;
+
+    if (n <= 0) {
+      setState({ ...to, chartData: [] });
       return;
     }
+
+    animIdRef.current += 1;
+    const animId = animIdRef.current;
 
     const from = stateRef.current;
-    const to = targetState;
+    const fromYDomain = from?.yDomain;
+    const fromDdDomain = from?.ddDomain;
+    const fromMetricMode = from?.transitionMeta?.metricMode;
+    const toMetricMode = to?.transitionMeta?.metricMode;
+    const isMetricUnitSwitch =
+      typeof fromMetricMode === "string" &&
+      typeof toMetricMode === "string" &&
+      fromMetricMode !== toMetricMode;
 
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-
-    const fromArr = Array.isArray(from.chartData) ? from.chartData : [];
-    const toArr = Array.isArray(to.chartData) ? to.chartData : [];
-    const timeOverlap = overlapRatio(toTimeSet(fromArr), toTimeSet(toArr));
-    const canMorph =
-      hasSameRangeMode(from, to) &&
-      areDomainsSimilar(from.xDomain, to.xDomain) &&
-      timeOverlap >= 0.9;
-
-    // ---- 路径 A：禁用形变（切区间/重叠不足）→ 直接切数据，只平滑过渡副曲线透明度 ----
-    if (!canMorph) {
-      const fa = isFiniteNum(from.subAlpha) ? from.subAlpha : 0;
-      const ta = isFiniteNum(to.subAlpha) ? to.subAlpha : 0;
-
-      if (Math.abs(fa - ta) < 0.01) {
-        setState(to);
-        return;
-      }
-
-      const start = performance.now();
-      const dur = Math.max(180, Number(duration) || 0);
-
-      const step = (now) => {
-        const p = clamp01((now - start) / dur);
-        if (p >= 1) {
-          setState(to);
-        } else {
-          setState({ ...to, subAlpha: lerp(fa, ta, easeInOutCubic(p)) });
-          rafRef.current = requestAnimationFrame(step);
-        }
-      };
-
-      rafRef.current = requestAnimationFrame(step);
-      return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-    }
-
-    // ---- 路径 B：同区间且高重叠（切视图/指标/策略）→ 保守逐点插值过渡 ----
-
-    const byT = (arr) => {
-      const m = new Map();
-      arr.forEach((p) => {
-        if (p && Number.isFinite(Number(p.t))) m.set(Number(p.t), p);
-      });
-      return m;
-    };
-
-    const fromMap = byT(fromArr);
-    const toMap = byT(toArr);
-    const times = Array.from(fromMap.keys()).filter((t) => toMap.has(t)).sort((a, b) => a - b);
-    if (times.length < 2) {
-      setState(to);
-      return;
-    }
-    const fields = ["vMain", "vSub", "cMain", "cSub", "ddMain", "ddSub"];
-
-    const readNum = (p, k) => {
-      if (!p) return null;
-      const n = Number(p[k]);
-      return Number.isFinite(n) ? n : null;
-    };
-
-    const dur = Math.max(180, Number(duration) || 0);
+    const durationMs = clamp(1200 + n * 14, 2600, 5600);
     const start = performance.now();
 
-    const step = (now) => {
-      const p = clamp01((now - start) / dur);
-      const e = easeInOutCubic(p);
+    const targetStartT = Number(to?.xDomain?.[0]);
+    const fallbackStartT = Number(rows[0]?.t);
+    const xStart = Number.isFinite(targetStartT) ? targetStartT : fallbackStartT;
 
-      const next = {
+    const targetEndT = Number(to?.xDomain?.[1]);
+    const fallbackEndT = Number(rows[n - 1]?.t);
+    const xTargetEnd = Number.isFinite(targetEndT) ? targetEndT : fallbackEndT;
+
+    const fixedDomain =
+      Number.isFinite(xStart) && Number.isFinite(xTargetEnd)
+        ? [Math.min(xStart, xTargetEnd), Math.max(xStart, xTargetEnd)]
+        : to.xDomain;
+
+    const buildFrame = (revealProgress, eased) => {
+      const visibleCount =
+        n <= 1 ? n : Math.min(n, 1 + Math.floor(clamp01(revealProgress) * (n - 1)));
+      const chartData = rows.slice(0, visibleCount);
+
+      return {
         ...to,
-        subAlpha: isFiniteNum(from.subAlpha) && isFiniteNum(to.subAlpha) ? lerp(from.subAlpha, to.subAlpha, e) : to.subAlpha,
-        xDomain: to.xDomain,
-        yDomain: to.yDomain,
-        ddDomain: to.ddDomain,
+        chartData,
+        xDomain: fixedDomain,
+        yDomain: isMetricUnitSwitch ? to.yDomain : lerpDomain(fromYDomain, to.yDomain, eased),
+        ddDomain: lerpDomain(fromDdDomain, to.ddDomain, eased),
+        subAlpha: isFiniteNum(to.subAlpha) ? to.subAlpha : 0,
       };
+    };
 
-      const chartData = new Array(times.length);
-      for (let i = 0; i < times.length; i++) {
-        const tms = times[i];
-        const pf = fromMap.get(tms);
-        const pt = toMap.get(tms);
-        const row = { t: tms, date: (pt && pt.date) || (pf && pf.date) || timeToDateStr(tms) };
+    setState(buildFrame(0, 0));
 
-        for (const k of fields) {
-          let a = readNum(pf, k);
-          let b = readNum(pt, k);
-          if (a == null && b == null) {
-            row[k] = null;
-            continue;
-          }
-          if (a == null) a = b;
-          if (b == null) b = a;
-          row[k] = lerp(a, b, e);
-        }
-        chartData[i] = row;
+    const step = (now) => {
+      if (animId !== animIdRef.current) return;
+
+      const p = clamp01((now - start) / durationMs);
+      const e = easeInOutCubic(p);
+      setState(buildFrame(p, e));
+
+      if (p < 1) {
+        rafRef.current = requestAnimationFrame(step);
+      } else {
+        rafRef.current = null;
+        setState(to);
       }
-
-      const pct = (a, b) => {
-        if (a == null || b == null) return 0;
-        const aa = Number(a);
-        const bb = Number(b);
-        if (!Number.isFinite(aa) || !Number.isFinite(bb) || bb <= 0) return 0;
-        return ((aa - bb) / bb) * 100;
-      };
-
-      for (let i = 0; i < chartData.length; i++) {
-        const cur = chartData[i];
-        const prev = chartData[i - 1];
-        cur.idx = i;
-        cur.chgMain = i === 0 ? 0 : pct(cur.vMain, prev?.vMain);
-        cur.chgSub = i === 0 ? 0 : pct(cur.vSub, prev?.vSub);
-      }
-
-      next.chartData = chartData;
-      setState(next);
-
-      if (p < 1) rafRef.current = requestAnimationFrame(step);
-      else setState(to);
     };
 
     rafRef.current = requestAnimationFrame(step);
+
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
     };
   }, [targetState, duration]);
 

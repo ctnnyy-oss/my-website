@@ -1,45 +1,36 @@
 import React, { useEffect, useState } from "react";
+import { Routes, Route, useNavigate } from "react-router-dom";
 
 import Home from "../pages/home/Home";
 import BacktestV2 from "../pages/investment/backtest-v2";
-import IllustrationsPage from "../pages/illustrations/IllustrationsPage";
-import AnimationsPage from "../pages/animations/AnimationsPage";
 import NovelsPage from "../pages/novels/NovelsPage";
 import ComicsPage from "../pages/comics/ComicsPage";
-import ComicsReaderPage from "../pages/comics/ComicsReaderPage";
+import IllustrationsPage from "../pages/illustrations/IllustrationsPage";
+import AnimationsPage from "../pages/animations/AnimationsPage";
 import GamesPage from "../pages/games/GamesPage";
+import ToolsPage from "../pages/tools/ToolsPage";
 import ReaderPage from "../pages/reader/ReaderPage";
+import ComicsReaderPage from "../pages/comics/ComicsReaderPage";
 
 export default function App() {
-  const [activePage, setActivePage] = useState("home");
+  const navigate = useNavigate();
   const [readerPayload, setReaderPayload] = useState(null);
   const [comicPayload, setComicPayload] = useState(null);
 
-  const goHome = () => setActivePage("home");
-
-  const openReader = (payload) => {
-    setReaderPayload(payload);
-    setActivePage("reader");
-  };
-
-  const openComicReader = (payload) => {
-    setComicPayload(payload);
-    setActivePage("comicReader");
-  };
-
+  // Legacy URL param support (?bt=v2, ?file=xxx)
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
 
       if (params.get("bt") === "v2") {
-        setActivePage("investment-v2");
+        navigate("/tools/backtest", { replace: true });
         return;
       }
 
       const file = params.get("file");
       if (file) {
         const title = params.get("title") || "阅读";
-        openReader({ file, title, from: "novels" });
+        setReaderPayload({ file, title, from: "/novels" });
       }
     } catch {
       // ignore malformed query
@@ -47,71 +38,77 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (activePage === "reader") {
+  const openReader = (payload) => {
+    setReaderPayload(payload);
+  };
+
+  const openComicReader = (payload) => {
+    setComicPayload(payload);
+  };
+
+  // Reader overlay: takes over the whole screen (same pattern as before)
+  if (readerPayload) {
     return (
       <ReaderPage
-        file={readerPayload?.file}
-        title={readerPayload?.title}
-        onBack={() => setActivePage(readerPayload?.from || "novels")}
+        file={readerPayload.file}
+        title={readerPayload.title}
+        meta={readerPayload.meta}
+        onBack={() => {
+          const from = readerPayload.from || "/novels";
+          setReaderPayload(null);
+          navigate(from);
+        }}
       />
     );
   }
 
-  if (activePage === "comicReader") {
+  // Comic reader overlay: takes over the whole screen (same pattern as before)
+  if (comicPayload) {
     return (
       <ComicsReaderPage
-        title={comicPayload?.title}
-        mode={comicPayload?.mode}
-        pages={comicPayload?.pages}
-        manifest={comicPayload?.manifest}
-        workId={comicPayload?.workId}
-        chapter={comicPayload?.chapter}
-        dir={comicPayload?.dir}
-        count={comicPayload?.count}
-        ext={comicPayload?.ext}
-        pad={comicPayload?.pad}
-        start={comicPayload?.start}
-        onBack={() => setActivePage("comics")}
+        title={comicPayload.title}
+        mode={comicPayload.mode}
+        pages={comicPayload.pages}
+        manifest={comicPayload.manifest}
+        workId={comicPayload.workId}
+        chapter={comicPayload.chapter}
+        dir={comicPayload.dir}
+        count={comicPayload.count}
+        ext={comicPayload.ext}
+        pad={comicPayload.pad}
+        start={comicPayload.start}
+        onBack={() => {
+          setComicPayload(null);
+          navigate("/comics");
+        }}
       />
     );
   }
 
-  if (activePage === "home") {
-    return <Home onNavigate={setActivePage} />;
-  }
-
-  if (activePage === "investment" || activePage === "backtest") {
-    return <BacktestV2 onBack={goHome} />;
-  }
-
-  if (activePage === "investment-v2") {
-    return <BacktestV2 onBack={goHome} />;
-  }
-
-  if (activePage === "illustrations") {
-    return <IllustrationsPage onBack={goHome} />;
-  }
-
-  if (activePage === "animations") {
-    return <AnimationsPage onBack={goHome} />;
-  }
-
-  if (activePage === "novels") {
-    return (
-      <NovelsPage
-        onBack={goHome}
-        onOpenReader={(payload) => openReader({ ...payload, from: "novels" })}
+  return (
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route
+        path="/novels"
+        element={
+          <NovelsPage
+            onOpenReader={(p) => openReader({ ...p, from: "/novels" })}
+          />
+        }
       />
-    );
-  }
-
-  if (activePage === "comics") {
-    return <ComicsPage onBack={goHome} onOpenComicReader={openComicReader} />;
-  }
-
-  if (activePage === "games") {
-    return <GamesPage onBack={goHome} />;
-  }
-
-  return <Home onNavigate={setActivePage} />;
+      <Route
+        path="/comics"
+        element={<ComicsPage onOpenComicReader={openComicReader} />}
+      />
+      <Route path="/illustrations" element={<IllustrationsPage />} />
+      <Route path="/animations" element={<AnimationsPage />} />
+      <Route path="/games" element={<GamesPage />} />
+      <Route path="/tools" element={<ToolsPage />} />
+      <Route
+        path="/tools/backtest"
+        element={<BacktestV2 onBack={() => navigate("/tools")} />}
+      />
+      <Route path="*" element={<Home />} />
+    </Routes>
+  );
 }

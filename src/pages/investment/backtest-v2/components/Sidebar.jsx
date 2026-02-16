@@ -37,7 +37,7 @@ const Sidebar = ({
 
   return (
     <aside
-      className="h-full flex flex-col border-r border-white/40 bg-white/20 backdrop-blur-xl z-20 relative shadow-[4px_0_24px_rgba(255,182,193,0.1)]"
+      className="backtest-sidebar h-full flex flex-col border-r border-white/40 bg-white/20 backdrop-blur-xl z-20 relative shadow-[4px_0_24px_rgba(255,182,193,0.1)]"
       style={{ width: SIDEBAR_WIDTH }}
     >
       {/* 顶部标题区 */}
@@ -46,29 +46,30 @@ const Sidebar = ({
           {...cardFXProps}
           className="bg-white/60 border border-white/70 rounded-[26px] p-3 shadow-[0_10px_28px_rgba(255,182,193,0.16)] mb-2.5 card-bloom"
         >
-          <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="sidebar-hero-top">
             <button
               onClick={onBack}
-              className="ripple-button flex items-center gap-2 px-3 py-1.5 bg-white/80 backdrop-blur-md rounded-full shadow-sm text-[#8B4F58] font-bold hover:bg-white hover:text-[#FF8FAB] transition-all text-[13px]"
+              className="sidebar-hero-pill sidebar-hero-top-item ripple-button flex items-center justify-center gap-2 px-3 py-2 text-[#8B4F58] font-bold hover:bg-white hover:text-[#FF8FAB] transition-all text-[13px]"
             >
               <ArrowLeft size={14} /> 返回主页
             </button>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 border border-white/80 text-[11px] font-bold text-[#8B4F58] shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-[#FF8FAB]"></span> 投资组合回测模型
+
+            <div className="sidebar-hero-pill sidebar-hero-top-item sidebar-hero-model inline-flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-bold text-[#8B4F58]">
+              <span className="truncate">投资组合回测模型</span>
             </div>
           </div>
 
-          <div>
-            <h1 className="relative text-[36px] font-black text-[#8B4F58] leading-none tracking-wide">
-              <span className="relative z-10">双子星</span>
-              <span className="absolute -bottom-1 left-0 h-2 w-[84px] rounded-full bg-[#FFB6C1]/45"></span>
-            </h1>
-            <div className="flex gap-2 mt-2 text-[11px] font-bold text-[#C5A0A6] tracking-tight">
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#FF8FAB]"></span> 细水长流
-              </span>
-              <span className="flex items-center gap-1">
+          <div className="sidebar-hero-bottom">
+            <div className="sidebar-hero-title-wrap">
+              <h1 className="sidebar-hero-title">双子星</h1>
+            </div>
+
+            <div className="sidebar-hero-tags">
+              <span className="sidebar-hero-tag sidebar-hero-tag-b">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#89CFF0]"></span> 五等分
+              </span>
+              <span className="sidebar-hero-tag sidebar-hero-tag-a">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#FF8FAB]"></span> 细水长流
               </span>
             </div>
           </div>
@@ -76,7 +77,7 @@ const Sidebar = ({
       </div>
 
       {/* 滚动设置区 */}
-      <div className="flex-1 min-h-0 px-3.5 py-0 flex flex-col gap-2.5">
+      <div className="backtest-sidebar-body flex-1 min-h-0 px-3.5 py-0 flex flex-col gap-2.5">
         {/* 1. 回测设定 */}
         <div
           {...cardFXProps}
@@ -123,7 +124,7 @@ const Sidebar = ({
         {/* 2. 基金配置 */}
         <div
           {...cardFXProps}
-          className="bg-white/40 border border-white/50 rounded-2xl p-2.5 shadow-sm backdrop-blur-md card-bloom flex flex-col flex-1 min-h-0"
+          className="backtest-sidebar-funds-card bg-white/40 border border-white/50 rounded-2xl p-2.5 shadow-sm backdrop-blur-md card-bloom flex flex-col flex-1 min-h-0"
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2 text-[#8B4F58] font-bold text-[14px]">
@@ -160,7 +161,7 @@ const Sidebar = ({
           </div>
 
           <div className="flex-1 min-h-0 flex flex-col">
-            <div className="grid flex-1 grid-cols-2 gap-2 auto-rows-[minmax(62px,1fr)]">
+            <div className="backtest-sidebar-funds-list grid flex-1 grid-cols-2 gap-2 auto-rows-[minmax(62px,1fr)]">
               {activeFunds.map((fund, idx) => (
                 <div
                   key={idx}

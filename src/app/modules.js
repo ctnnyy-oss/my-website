@@ -4,7 +4,7 @@ import {
   Palette,
   Gamepad2,
   Image as ImageIcon,
-  TrendingUp,
+  Wrench,
 } from "lucide-react";
 
 export const MODULES = [
@@ -31,7 +31,7 @@ export const MODULES = [
   },
   {
     id: "animations",
-    title: "Live2D 动画 (Animations)",
+    title: "动画 (Animations)",
     subtitle: "眨眼、飘发、呼吸的魔法时刻",
     icon: Video,
     accent: "from-[#FFB6CE] to-[#E9D9FF]",
@@ -44,10 +44,10 @@ export const MODULES = [
     accent: "from-[#FFE3EE] to-[#FFC2D1]",
   },
   {
-    id: "investment",
-    title: "投资 (Investment)",
-    subtitle: "双子星回测模型 & 基金组合分析",
-    icon: TrendingUp,
+    id: "tools",
+    title: "工具 (Tools)",
+    subtitle: "投资回撤模型 & 实用小工具",
+    icon: Wrench,
     accent: "from-[#FFD1E0] to-[#F6C1E6]",
   },
 ];

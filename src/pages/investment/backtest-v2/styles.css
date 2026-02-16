@@ -1,14 +1,23 @@
-﻿.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+﻿/* 颜色快速入口说明（只要改这里，就能统一改 Tooltip 文字色）
+ * 词义: --metric-help-text-color = CSS 变量（可复用颜色值）
+ * 作用: 控制 Tooltip 的标题/标签/正文三处文字颜色
+ * 提示: 颜色太浅会在白底上不明显，推荐先试 #C86A97 / #D45D8D / #B85C86
+ */
+
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+/* 词义: background = 背景色; 作用: 控制滚动条滑块颜色 */
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #FFC2D1; border-radius: 10px; }
+/* 词义: background = 背景色; 作用: 控制滚动条轨道颜色（transparent=透明） */
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 
 .transition-all-chart,
 .transition-all-chart path {
-  transition: stroke 0.6s ease, fill 0.6s ease, stroke-opacity 0.6s ease, fill-opacity 0.6s ease;
+  transition: stroke 0.45s ease, fill 0.45s ease;
 }
 
 .card-bloom {
   transition: box-shadow 260ms cubic-bezier(0.16, 1, 0.3, 1);
+  /* 词义: background-image + radial-gradient = 径向渐变背景; 作用: 卡片玻璃高光与粉色氛围 */
   background-image:
     radial-gradient(240px 160px at var(--mx, 20%) var(--my, 10%), rgba(255,255,255,0.65), transparent 60%),
     radial-gradient(320px 220px at 85% 85%, rgba(255,143,171,0.10), transparent 60%);
@@ -16,6 +25,7 @@
 }
 
 .card-bloom:hover {
+  /* 词义: box-shadow = 阴影色; 作用: 卡片悬停时外发光（粉色） */
   box-shadow: 0 10px 30px rgba(255,182,193,0.2);
 }
 
@@ -23,6 +33,7 @@
   content: "";
   position: absolute;
   inset: 0;
+  /* 词义: background + radial-gradient = 径向渐变; 作用: 指标卡左上角柔光 */
   background: radial-gradient(120px 80px at 15% 10%, rgba(255,255,255,0.9), transparent 70%);
   opacity: 0.5;
 }
@@ -31,17 +42,97 @@
   content: "";
   position: absolute;
   inset: 0;
+  /* 词义: background + linear-gradient = 线性渐变; 作用: 指标卡整体雾面叠层 */
   background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0));
   opacity: 0.35;
 }
 
+.metric-help-trigger {
+  padding: 2px 4px;
+  margin: -2px -4px;
+  cursor: help;
+  transition: background-color 180ms ease, box-shadow 180ms ease;
+}
+
+.metric-help-trigger:hover {
+  /* 词义: background = 背景色; 作用: 标题触发区 hover 高亮底色 */
+  background: rgba(255, 255, 255, 0.38);
+  /* 词义: box-shadow = 阴影/描边色; 作用: hover 时增加内描边对比 */
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.52);
+}
+
+.metric-help-trigger:focus-visible {
+  outline: none;
+  /* 词义: background = 背景色; 作用: 键盘聚焦时触发区底色 */
+  background: rgba(255, 255, 255, 0.45);
+  /* 词义: box-shadow = 阴影/描边色; 作用: 键盘聚焦时白色内边+粉色外环 */
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.65),
+    0 0 0 2px rgba(255, 143, 171, 0.3);
+}
+
+.metric-help-tooltip {
+  /* 词义: CSS 变量; 作用: Tooltip 文字总开关（改这一行=改标题/标签/正文） */
+  --metric-help-text-color: #C86A97;
+  position: fixed;
+  z-index: 2147483000;
+  pointer-events: none;
+  padding: 12px 14px;
+  border-radius: 14px;
+  /* 词义: border = 边框色; 作用: Tooltip 白色半透明边框 */
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  /* 词义: background = 背景色; 作用: Tooltip 白玻璃底色 */
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  /* 词义: box-shadow = 阴影色; 作用: Tooltip 外层粉色投影 */
+  box-shadow: 0 14px 48px rgba(255, 143, 171, 0.2);
+}
+
+.metric-help-title {
+  font-size: 12px;
+  font-weight: 900;
+  /* 词义: color = 文字颜色; 作用: Tooltip 标题色（引用总开关变量） */
+  color: var(--metric-help-text-color);
+  margin-bottom: 8px;
+}
+
+.metric-help-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.metric-help-row + .metric-help-row {
+  margin-top: 5px;
+}
+
+.metric-help-label {
+  font-size: 10px;
+  line-height: 1.5;
+  font-weight: 800;
+  /* 词义: color = 文字颜色; 作用: Tooltip 标签色（定义/作用/判断/例子/公式） */
+  color: var(--metric-help-text-color);
+  flex-shrink: 0;
+}
+
+.metric-help-line {
+  font-size: 10px;
+  line-height: 1.5;
+  font-weight: 600;
+  /* 词义: color = 文字颜色; 作用: Tooltip 正文色（引用同一变量） */
+  color: var(--metric-help-text-color);
+  word-break: break-word;
+}
+
 .noise-overlay {
+  /* 词义: background-image = 背景图; 作用: 噪点纹理层，提升玻璃质感 */
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.08'/%3E%3C/svg%3E");
   opacity: 0.4;
   mix-blend-mode: overlay;
 }
 
 .vignette {
+  /* 词义: background + radial-gradient = 径向渐变; 作用: 页面四周轻微粉雾晕影 */
   background: radial-gradient(circle at center, transparent 0%, rgba(255,240,245,0.3) 100%);
 }
 
@@ -57,6 +148,7 @@
   left: 50%;
   width: 5px;
   height: 5px;
+  /* 词义: background = 背景色; 作用: 按钮涟漪白色光点 */
   background: rgba(255,255,255,0.5);
   opacity: 0;
   border-radius: 100%;
@@ -72,4 +164,213 @@
 
 .ripple-button:focus:not(:active)::after {
   animation: ripple 1s ease-out;
+}
+
+.sidebar-hero-pill {
+  /* 词义: border = 边框色; 作用: 顶部胶囊边框（白玻璃描边） */
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  /* 词义: background = 背景色; 作用: 顶部胶囊底色（半透明白） */
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 9999px;
+  backdrop-filter: blur(8px);
+  /* 词义: box-shadow = 阴影色; 作用: 顶部胶囊轻阴影 */
+  box-shadow: 0 3px 10px rgba(139, 79, 88, 0.08);
+}
+
+.sidebar-hero-top {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: center;
+}
+
+.sidebar-hero-top-item {
+  min-width: 0;
+}
+
+.sidebar-hero-model {
+  white-space: nowrap;
+}
+
+.sidebar-hero-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: 10px;
+  min-height: 96px;
+  margin-top: 6px;
+}
+
+.sidebar-hero-title-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+.sidebar-hero-title {
+  margin: 0;
+  font-size: clamp(52px, 16vw, 60px);
+  font-weight: 900;
+  line-height: 0.94;
+  letter-spacing: -0.05em;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  /* 词义: background + linear-gradient = 线性渐变; 作用: “双子星”粉紫蓝渐变字 */
+  background: linear-gradient(90deg, #ff8fb8 0%, #c8a0da 52%, #7bcaf4 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  /* 词义: color = 文字颜色; 作用: 设为透明，露出上面的渐变填充 */
+  color: transparent;
+  /* 词义: -webkit-text-fill-color = WebKit 文字填充色; 作用: Safari/Chrome 透明填充兼容 */
+  -webkit-text-fill-color: transparent;
+}
+
+.sidebar-hero-tags {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.sidebar-hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.sidebar-hero-tag-a {
+  /* 词义: color = 文字颜色; 作用: 标签“五等分”文字颜色（常改色入口之一） */
+  color: #bb93a3;
+}
+
+.sidebar-hero-tag-b {
+  /* 词义: color = 文字颜色; 作用: 标签“细水长流”文字颜色（常改色入口之一） */
+  color: #9fb3c9;
+}
+
+@media (max-width: 768px) {
+  .backtest-root {
+    width: 100%;
+    min-height: 100dvh;
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    flex-direction: column;
+  }
+
+  .backtest-sidebar {
+    width: 100% !important;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.45);
+    box-shadow: none;
+  }
+
+  .backtest-sidebar-body,
+  .backtest-sidebar-funds-card,
+  .backtest-sidebar-funds-list {
+    flex: none;
+    min-height: auto;
+  }
+
+  .backtest-metrics-wrap {
+    width: 100%;
+    padding: 0 8px 8px;
+  }
+
+  .backtest-metrics-panel {
+    width: 100% !important;
+    height: auto;
+  }
+
+  .backtest-metrics-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: none !important;
+    height: auto;
+  }
+
+  .backtest-main {
+    width: 100%;
+    min-width: 0;
+    flex: none;
+  }
+
+  .backtest-main-header {
+    height: auto;
+    padding: 8px 10px;
+    align-items: stretch;
+  }
+
+  .backtest-toolbar-groups {
+    width: 100%;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .backtest-toolbar-group {
+    width: 100%;
+  }
+
+  .backtest-range-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .backtest-range-options,
+  .backtest-view-group {
+    flex-wrap: wrap;
+  }
+
+  .backtest-toggle-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .backtest-toggle-item {
+    width: 100%;
+  }
+
+  .backtest-toggle-sep {
+    display: none;
+  }
+
+  .backtest-chart-wrap {
+    flex: none;
+    min-height: 0;
+    overflow: visible;
+    padding: 8px;
+  }
+
+  .backtest-chart-section {
+    flex: none;
+    min-height: 0;
+    height: auto;
+  }
+
+  .backtest-chart-dd {
+    flex: none !important;
+    height: 240px;
+    min-height: 240px;
+  }
+
+  .backtest-chart-asset {
+    flex: none !important;
+    height: 320px;
+    min-height: 320px;
+  }
+
+  .sidebar-hero-title {
+    font-size: clamp(44px, 14vw, 56px);
+  }
 }

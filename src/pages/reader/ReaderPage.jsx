@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
+  BookOpen,
   Bookmark,
   Download,
   List,
@@ -195,7 +196,7 @@ function evenize(n) {
   return x % 2 === 0 ? x : x - 1;
 }
 
-export default function ReaderPage({ file: fileProp, title: titleProp, onBack }) {
+export default function ReaderPage({ file: fileProp, title: titleProp, onBack, meta }) {
   const { file: fileFromQuery, title: titleFromQuery } = getQuery();
   const file = fileProp || fileFromQuery || "";
 
@@ -217,6 +218,8 @@ export default function ReaderPage({ file: fileProp, title: titleProp, onBack })
 
   const [progress, setProgress] = useState(0);
   const [activeHeadingId, setActiveHeadingId] = useState("");
+  const [showInfoPanel, setShowInfoPanel] = useState(true);
+  const infoMode = !!meta && showInfoPanel;
 
   // 单栏滚动 refs
   const scrollerRef = useRef(null);
@@ -898,7 +901,7 @@ useEffect(() => {
       style={themeStyle}
     >
       {/* 顶部进度条 */}
-      <div className="fixed top-0 left-0 right-0 h-[3px] z-50">
+      <div className={`fixed top-0 right-0 h-[3px] z-50 transition-[left] ${infoMode ? 'left-[260px]' : 'left-0'}`}>
         <div
           className="h-full w-full"
           style={{
@@ -929,7 +932,110 @@ useEffect(() => {
         }}
       />
 
-      <div className="relative z-10 px-4 md:px-6 lg:px-8 py-4 md:py-6">
+      <div className={`relative z-10 ${infoMode ? 'flex' : ''}`}>
+        {/* 信息面板（封面 + 简介 + 永久目录） */}
+        {infoMode ? (
+          <aside
+            className="w-[260px] shrink-0 h-screen overflow-y-auto hidden lg:flex flex-col mx-reader-scrollbar"
+            style={{
+              background: settings.theme === "night"
+                ? "linear-gradient(180deg, rgba(26,20,22,0.96), rgba(18,14,16,0.96))"
+                : "linear-gradient(180deg, rgba(255,244,247,0.96), rgba(255,248,251,0.96))",
+              borderRight: settings.theme === "night"
+                ? "1px solid rgba(255,170,200,0.12)"
+                : "1px solid rgba(255,200,220,0.35)",
+              backdropFilter: "blur(20px)",
+            }}
+          >
+            <div className="p-5 flex-1 flex flex-col min-h-0">
+              {/* 封面 */}
+              {meta?.cover ? (
+                <div className="w-full aspect-[3/4] rounded-2xl overflow-hidden border border-white/20 shadow-sm mb-4 shrink-0">
+                  <img
+                    src={withBase(meta.cover)}
+                    alt={effectiveTitle}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div
+                  className="w-full aspect-[3/4] rounded-2xl flex items-center justify-center mb-4 shrink-0"
+                  style={{
+                    background: settings.theme === "night" ? "rgba(255,170,200,0.08)" : "rgba(255,170,200,0.12)",
+                    border: settings.theme === "night" ? "1px solid rgba(255,170,200,0.15)" : "1px solid rgba(255,200,220,0.35)",
+                  }}
+                >
+                  <BookOpen size={40} style={{ color: settings.theme === "night" ? "rgba(248,233,238,0.35)" : "rgba(106,58,68,0.25)" }} />
+                </div>
+              )}
+
+              {/* 书名 */}
+              <h2
+                className="text-lg font-black leading-tight shrink-0"
+                style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
+              >
+                {effectiveTitle}
+              </h2>
+
+              {/* 简介 */}
+              {meta?.desc ? (
+                <p
+                  className="mt-3 text-xs leading-relaxed font-semibold shrink-0"
+                  style={{ color: settings.theme === "night" ? "rgba(248,233,238,0.6)" : "rgba(106,58,68,0.6)" }}
+                >
+                  {meta.desc}
+                </p>
+              ) : null}
+
+              {/* 分隔线 */}
+              <div
+                className="mt-5 mb-4 h-[1px] w-full shrink-0"
+                style={{ background: settings.theme === "night" ? "rgba(255,170,200,0.15)" : "rgba(255,200,220,0.35)" }}
+              />
+
+              {/* 目录标题 */}
+              <div
+                className="text-xs font-black tracking-widest mb-3 shrink-0"
+                style={{ color: settings.theme === "night" ? "rgba(248,233,238,0.45)" : "rgba(106,58,68,0.45)" }}
+              >
+                目录 · CHAPTERS
+              </div>
+
+              {/* 章节列表 */}
+              <div className="flex-1 overflow-y-auto space-y-1 min-h-0 mx-reader-scrollbar">
+                {toc.length > 0 ? (
+                  toc.map((h) => (
+                    <button
+                      key={h.id}
+                      onClick={() => jumpToId(h.id)}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition truncate"
+                      style={{
+                        color: activeHeadingId === h.id
+                          ? (settings.theme === "night" ? "#FFB4D6" : "#FF7EA9")
+                          : (settings.theme === "night" ? "rgba(248,233,238,0.7)" : "rgba(106,58,68,0.65)"),
+                        background: activeHeadingId === h.id
+                          ? (settings.theme === "night" ? "rgba(255,170,200,0.1)" : "rgba(255,170,200,0.1)")
+                          : "transparent",
+                      }}
+                      title={h.text}
+                    >
+                      {h.text}
+                    </button>
+                  ))
+                ) : (
+                  <div
+                    className="text-xs font-semibold"
+                    style={{ color: settings.theme === "night" ? "rgba(248,233,238,0.35)" : "rgba(106,58,68,0.35)" }}
+                  >
+                    暂未检测到章节标题
+                  </div>
+                )}
+              </div>
+            </div>
+          </aside>
+        ) : null}
+
+        <div className={`${infoMode ? 'flex-1 min-w-0 overflow-y-auto h-screen' : ''} px-4 md:px-6 lg:px-8 py-4 md:py-6`}>
         {/* 工具栏 */}
         <div className="sticky top-4 z-30">
           <div className="reader-toolbar rounded-[22px]">
@@ -947,6 +1053,18 @@ useEffect(() => {
                       <ArrowLeft size={18} />
                       返回
                     </button>
+
+                    {meta ? (
+                      <button
+                        onClick={() => setShowInfoPanel((v) => !v)}
+                        className="ripple-button reader-chip inline-flex items-center gap-2 px-3 py-2 rounded-full text-sm font-black hidden lg:inline-flex"
+                        style={{ color: settings.theme === "night" ? "#F8E9EE" : "#6A3A44" }}
+                        title={showInfoPanel ? "隐藏信息面板" : "显示信息面板"}
+                      >
+                        <BookOpen size={16} />
+                        {showInfoPanel ? "隐藏面板" : "显示面板"}
+                      </button>
+                    ) : null}
 
                     <div className="min-w-0">
                       <div
@@ -1326,6 +1444,7 @@ useEffect(() => {
               </div>
             )}
           </div>
+        </div>
         </div>
       </div>
 

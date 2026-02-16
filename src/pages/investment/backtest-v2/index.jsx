@@ -53,7 +53,7 @@ export default function BacktestV2({ onBack }) {
   // ==================== 渲染 ====================
   return (
     <div
-      className="h-screen w-screen overflow-hidden flex font-sans selection:bg-[#FFC2D1] selection:text-[#8B4F58]"
+      className="backtest-root h-screen w-screen overflow-hidden flex font-sans selection:bg-[#FFC2D1] selection:text-[#8B4F58]"
       style={{ background: "#FFF0F5", ...dynamicStyles }}
     >
       <BackgroundBlobs />
@@ -95,7 +95,7 @@ export default function BacktestV2({ onBack }) {
 
       {/* ===== 第二列：9个指标小卡片（独占一列，铺满高度） ===== */}
       {backtest.results && (
-        <div className="relative z-10 py-2 pl-2">
+        <div className="backtest-metrics-wrap relative z-10 py-2 pl-2">
           <MetricsPanel
             results={backtest.results}
             viewMode={backtest.viewMode}
@@ -106,14 +106,14 @@ export default function BacktestV2({ onBack }) {
       )}
 
       {/* ===== 第三列：按钮区 + 图表 ===== */}
-      <main className="flex-1 flex flex-col min-w-0 relative z-10">
+      <main className="backtest-main flex-1 flex flex-col min-w-0 relative z-10">
         {/* 顶栏按钮区 */}
-        <header className="h-[58px] flex items-center px-5 bg-white/30 backdrop-blur-sm border-b border-white/40">
-          <div className="flex items-center gap-2.5 flex-wrap">
+        <header className="backtest-main-header h-[58px] flex items-center px-5 bg-white/30 backdrop-blur-sm border-b border-white/40">
+          <div className="backtest-toolbar-groups flex items-center gap-2.5 flex-wrap">
             {/* 回测区间 */}
-            <div className="flex items-center bg-white/50 p-1 rounded-xl shadow-inner">
+            <div className="backtest-toolbar-group backtest-range-group flex items-center bg-white/50 p-1 rounded-xl shadow-inner">
               <span className="px-2 text-[10px] font-bold text-[#C5A0A6]">区间</span>
-              <div className="flex gap-1">
+              <div className="backtest-range-options flex gap-1">
                 {RANGE_OPTIONS.map((opt) => {
                   const active = backtest.rangeMode === opt.key;
                   return (
@@ -139,7 +139,7 @@ export default function BacktestV2({ onBack }) {
             </div>
 
             {/* 视图模式 */}
-            <div className="flex bg-white/50 p-1 rounded-xl shadow-inner">
+            <div className="backtest-toolbar-group backtest-view-group flex bg-white/50 p-1 rounded-xl shadow-inner">
               {[
                 { id: "compare", label: "对比", icon: GitCompare, color: "#BFAFB2" },
                 { id: "A", label: "细水长流", icon: Flower, color: "#FF8FAB" },
@@ -164,33 +164,39 @@ export default function BacktestV2({ onBack }) {
             </div>
 
             {/* 指标 & 坐标 & 策略切换 */}
-            <div className="flex items-center gap-2.5 bg-white/40 px-2.5 py-0.5 rounded-2xl border border-white/50 shadow-sm backdrop-blur-md">
-              <ToggleGroup
-                value={backtest.metricMode}
-                onChange={backtest.setMetricMode}
-                options={[
-                  { value: "value", label: "资产", icon: DollarSign },
-                  { value: "return", label: "收益", icon: Percent },
-                ]}
-              />
-              <div className="w-[1px] h-3 bg-[#C5A0A6]/30 mx-1"></div>
-              <ToggleGroup
-                value={backtest.scaleMode}
-                onChange={backtest.setScaleMode}
-                options={[
-                  { value: "linear", label: "线性", icon: TrendingUp },
-                  { value: "log", label: "对数", icon: Zap, disabled: backtest.metricMode !== "value" },
-                ]}
-              />
-              <div className="w-[1px] h-3 bg-[#C5A0A6]/30 mx-1"></div>
-              <ToggleGroup
-                value={backtest.strategyMode}
-                onChange={backtest.setStrategyMode}
-                options={[
-                  { value: "daily", label: "定投", icon: Layers },
-                  { value: "lumpSum", label: "梭哈", icon: ArrowUpRight },
-                ]}
-              />
+            <div className="backtest-toolbar-group backtest-toggle-group flex items-center gap-2.5 bg-white/40 px-2.5 py-0.5 rounded-2xl border border-white/50 shadow-sm backdrop-blur-md">
+              <div className="backtest-toggle-item">
+                <ToggleGroup
+                  value={backtest.metricMode}
+                  onChange={backtest.setMetricMode}
+                  options={[
+                    { value: "value", label: "资产", icon: DollarSign },
+                    { value: "return", label: "收益", icon: Percent },
+                  ]}
+                />
+              </div>
+              <div className="backtest-toggle-sep w-[1px] h-3 bg-[#C5A0A6]/30 mx-1"></div>
+              <div className="backtest-toggle-item">
+                <ToggleGroup
+                  value={backtest.scaleMode}
+                  onChange={backtest.setScaleMode}
+                  options={[
+                    { value: "linear", label: "线性", icon: TrendingUp },
+                    { value: "log", label: "对数", icon: Zap, disabled: backtest.metricMode !== "value" },
+                  ]}
+                />
+              </div>
+              <div className="backtest-toggle-sep w-[1px] h-3 bg-[#C5A0A6]/30 mx-1"></div>
+              <div className="backtest-toggle-item">
+                <ToggleGroup
+                  value={backtest.strategyMode}
+                  onChange={backtest.setStrategyMode}
+                  options={[
+                    { value: "daily", label: "定投", icon: Layers },
+                    { value: "lumpSum", label: "梭哈", icon: ArrowUpRight },
+                  ]}
+                />
+              </div>
             </div>
           </div>
         </header>
@@ -205,12 +211,13 @@ export default function BacktestV2({ onBack }) {
             )}
           </div>
         ) : (
-          <div className="flex-1 min-h-0 p-2 overflow-hidden flex flex-col">
+          <div className="backtest-chart-wrap flex-1 min-h-0 p-2 overflow-hidden flex flex-col">
             <ChartSection
               chartState={chartState}
               scaleMode={backtest.scaleMode}
               metricMode={backtest.metricMode}
               viewMode={backtest.viewMode}
+              rangeMode={backtest.rangeMode}
               ddDomain={ddDomain}
               ddTicks={ddTicks}
               chartYTicks={chartYTicks}
@@ -224,3 +231,4 @@ export default function BacktestV2({ onBack }) {
     </div>
   );
 }
+
