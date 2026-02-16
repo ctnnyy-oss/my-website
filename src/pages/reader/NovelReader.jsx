@@ -41,7 +41,8 @@ const DEFAULT_SETTINGS = {
 
 function safeJsonParse(v, fallback) {
   try {
-    return JSON.parse(v);
+    const parsed = JSON.parse(v);
+    return parsed ?? fallback;
   } catch {
     return fallback;
   }
@@ -195,7 +196,8 @@ export default function NovelReader() {
   const bookmarksKey = useMemo(() => `${STORAGE.bookmarksPrefix}${file || "__no_file__"}`,[file]);
 
   const [bookmarks, setBookmarks] = useState(() => {
-    return safeJsonParse(localStorage.getItem(bookmarksKey), []);
+    const arr = safeJsonParse(localStorage.getItem(bookmarksKey), []);
+    return Array.isArray(arr) ? arr : [];
   });
 
   // 读取文件
