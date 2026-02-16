@@ -6,7 +6,9 @@ import BacktestV2 from "../pages/investment/backtest-v2";
 import NovelsPage from "../pages/novels/NovelsPage";
 import ComicsPage from "../pages/comics/ComicsPage";
 import IllustrationsPage from "../pages/illustrations/IllustrationsPage";
+import IllustrationsCollectionPage from "../pages/illustrations/IllustrationsCollectionPage";
 import AnimationsPage from "../pages/animations/AnimationsPage";
+import AnimationsCollectionPage from "../pages/animations/AnimationsCollectionPage";
 import GamesPage from "../pages/games/GamesPage";
 import ToolsPage from "../pages/tools/ToolsPage";
 import ReaderPage from "../pages/reader/ReaderPage";
@@ -101,7 +103,15 @@ export default function App() {
         element={<ComicsPage onOpenComicReader={openComicReader} />}
       />
       <Route path="/illustrations" element={<IllustrationsPage />} />
+      <Route
+        path="/illustrations/:categoryId"
+        element={<IllustrationsCollectionPage />}
+      />
       <Route path="/animations" element={<AnimationsPage />} />
+      <Route
+        path="/animations/:categoryId"
+        element={<AnimationsCollectionPage />}
+      />
       <Route path="/games" element={<GamesPage />} />
       <Route path="/tools" element={<ToolsPage />} />
       <Route

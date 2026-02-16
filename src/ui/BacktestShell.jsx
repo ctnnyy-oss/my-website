@@ -300,6 +300,7 @@ export default function BacktestShell({
   wide = false,
   tone = "default",
   pad = "normal", // normal|tight|none
+  scrollable = false,
 }) {
   useRipple();
 
@@ -314,9 +315,13 @@ export default function BacktestShell({
       ? "p-2 md:p-4"
       : "p-4 md:p-8";
 
+  const overflowClass = scrollable
+    ? "overflow-x-hidden overflow-y-auto"
+    : "overflow-hidden";
+
   return (
     <div
-      className={`min-h-screen ${padClass} overflow-hidden relative ${toneClass}`}
+      className={`min-h-screen ${padClass} ${overflowClass} relative ${toneClass}`}
       style={{ background: theme.colors.bgGradient }}
     >
       <BackgroundBlobs tone={safeTone} />

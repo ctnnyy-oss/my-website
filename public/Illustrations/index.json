@@ -1,12 +1,37 @@
 [
   {
     "id": "001",
-    "title": "001",
-    "file": "data/001/file.png"
+    "title": "插画分类 001",
+    "desc": "该分类包含插画 001",
+    "cover": "Illustrations/data/001/file.png",
+    "data": "Illustrations/categories/001.json"
   },
   {
     "id": "002",
-    "title": "002",
-    "file": "data/002/file.png"
+    "title": "插画分类 002",
+    "desc": "该分类包含插画 002",
+    "cover": "Illustrations/data/002/file.png",
+    "data": "Illustrations/categories/002.json"
+  },
+  {
+    "id": "003",
+    "title": "插画分类 003",
+    "desc": "该分类包含插画 003",
+    "cover": "Illustrations/data/003/1770290163856(1).png",
+    "data": "Illustrations/categories/003.json"
+  },
+  {
+    "id": "004",
+    "title": "插画分类 004",
+    "desc": "该分类包含插画 004",
+    "cover": "Illustrations/data/004/1769790681626(1).png",
+    "data": "Illustrations/categories/004.json"
+  },
+  {
+    "id": "005",
+    "title": "插画分类 005",
+    "desc": "该分类包含插画 005 系列",
+    "cover": "Illustrations/data/005/1769734843053.png",
+    "data": "Illustrations/categories/005.json"
   }
 ]
