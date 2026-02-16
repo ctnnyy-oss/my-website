@@ -229,3 +229,4 @@ export default function IllustrationsCollectionPage() {
     </CollectionWallPage>
   );
 }
+
