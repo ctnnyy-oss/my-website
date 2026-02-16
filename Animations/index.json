@@ -1,23 +1,8 @@
 [
   {
     "id": "001",
-    "title": "作品 001（示例）",
-    "desc": "以后把这里换成你的作品介绍（description，描述）",
-    "watch": {
-      "douyin": "",
-      "kuaishou": "",
-      "xhs": "",
-      "bilibili": ""
-    },
-    "download": {
-      "quark": {
-        "url": "",
-        "code": ""
-      },
-      "baidu": {
-        "url": "",
-        "code": ""
-      }
-    }
+    "title": "动画分类 001",
+    "desc": "该分类包含动画 001 - 007",
+    "data": "Animations/categories/001.json"
   }
 ]
